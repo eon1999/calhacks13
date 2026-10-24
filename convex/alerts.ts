@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import {
@@ -29,7 +30,9 @@ export interface RaiseArgs {
 /**
  * Inserts an alert. Urgent alerts within a couple of minutes of another open
  * urgent alert are merged (the band and the voice agent often both raise one
- * for the same moment).
+ * for the same moment). New care-team alerts are also texted
+ * (convex/notify.ts, per each member's notification preferences); the band's
+ * own spoken prompts never are.
  */
 export async function raiseAlert(ctx: MutationCtx, args: RaiseArgs): Promise<Id<"alerts">> {
   const at = args.at ?? Date.now();
@@ -46,7 +49,7 @@ export async function raiseAlert(ctx: MutationCtx, args: RaiseArgs): Promise<Id<
       return dup._id;
     }
   }
-  return ctx.db.insert("alerts", {
+  const alertId = await ctx.db.insert("alerts", {
     patientId: args.patientId,
     tier: args.tier,
     kind: args.kind,
@@ -55,6 +58,8 @@ export async function raiseAlert(ctx: MutationCtx, args: RaiseArgs): Promise<Id<
     createdAt: at,
     status: "open",
   });
+  if (isCareAlert(args)) await ctx.scheduler.runAfter(0, internal.notify.textAlert, { alertId });
+  return alertId;
 }
 
 /** Closes open alerts of these kinds (optionally for one ref), e.g. reminders once a dose is taken. */

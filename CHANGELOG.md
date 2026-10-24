@@ -5,6 +5,49 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Text alerts land on main, with per-person notification preferences, daily summary texts and scheduled check-ins
+
+This merges `feat/voice-on-task` (Twilio text alerts, the on-task voice prompt) into main's dose engine, alerts, care dashboard and Clerk work. Where both sides had built the same thing, **main's pages won**: `/care`, `/clinician/[patientId]`, `/settings`, the seed and `raiseAlert`. My versions of `/care` and the clinician report were dropped before merging. The guiding rule for what was added: **configurable without overwhelm**.
+
+**Texting is wired into `raiseAlert`** (`convex/alerts.ts`)
+- Every *new* care-team alert (`isCareAlert`: notify, urgent, and family-facing "ask" like a declined consent) schedules `notify.textAlert`. The band's own spoken prompts (dose reminders, fall check, move nudge, check-ins) are never texted. A merged duplicate urgent alert isn't texted twice. `openAlert` is gone.
+- Dry run without Twilio env vars, as before: texts are logged as `skipped` with the body that would have gone out.
+
+**Notification preferences** (`lib/notify/preferences.ts` + tests, `careTeamMembers.notifications`)
+- Each person picks one of three presets: **Just the important stuff** (default: urgent, heads-ups, daily summary text, quiet 10 PM–7 AM), **Everything**, or **Emergencies only**. The individual switches sit under a folded **Customize**: urgent, heads-ups, "please check in" (owner only), daily summary and its time, quiet hours and their times. The copy is plain language.
+- Every field is optional, so existing rows resolve to the default. Saving also keeps `urgentAlerts` in sync, which the voice prompt reads.
+- `planTexts()` (`lib/notify/plan.ts`) honours them. In someone's quiet hours (patient's time zone), heads-ups are logged `skipped` with "Quiet hours, saved for the daily summary" (`textMessages.heldForSummary`). **Urgent always goes.**
+- Guardrails are warnings, never blocks: a warning in the editor when urgent is off, and a team warning when nobody with a phone would get urgent texts.
+- UI: a **Text notifications** panel on `/settings` (`components/settings/notifications-panel.tsx`) next to main's care team panel, which already toggles the `summary` permission. It shows who's texted, their preset, phone, Change / Send test, "Send today's summary text now", and recent texts (held ones marked). The hub's **Text alerts** card has the same editor. Editing uses `setMemberPhone`'s rule: yourself, or anyone if you're the owner or patient. On `/settings`, main's "manage as the owner" demo switch applies.
+
+**Daily summary text** (`lib/summary/daily.ts` + tests, `convex/summary.ts`, `convex/crons.ts`)
+- This is separate from main's 8 PM Claude summary on `/care` (`summaries.kind: "daily"`). It's a short, rule-based SMS under 300 characters: "Cadence · Margaret, day 16 after knee replacement: took 6/6 medicines, pain 5→3, last check-in: doing well, no warning signs." Heads-ups held in quiet hours are added as a brief line.
+- Stored as `summaries.kind: "daily_sms"` (`model: "rules"`), so it never stands in for, or blocks, the dashboard summary. Sent every 15 minutes to members with the summary text on, the `summary` permission and a phone, at their own time, at most once a day.
+
+**Scheduled check-ins**
+- Cadence by phase (`lib/onboarding/recovery.ts` `checkInsForDay`): first days 3×/day, early 2×, getting stronger 1×, routine every other day, pre-op none. Times are spread over 9 AM–9 PM and moved out of every dose's reminder window (`lib/voice/events.ts` `scheduledCheckInTimes`, tested).
+- The **dose engine** (`convex/doses.ts` `checkScheduledCheckIn`) raises an `ask` prompt of kind `check_in` once per slot, so the hub speaks it like any other prompt. It skips a slot that already had a check-in, and waits while another prompt is pending.
+- `POST /api/voice/nudge` polling (no `event`) also speaks a due scheduled check-in when no dose is due, deduped by a `check_in@<ms>` key. This is additive for firmware, plus an `X-Cadence-Event` header.
+
+**Demo seed:** Sarah and Maria get fictional 555-01xx numbers, so the dry-run log shows texts from the `/demo` simulators. Seeded history doesn't text anyone.
+
+**Verified:** `tsc` (app and `convex/`), `eslint` (no new warnings), **164 tests** (main's suites plus new ones: preferences, plan, summary composer, check-in cadence, and `tests/convex/notify.test.ts`), and `next build` all pass. `tests/convex/notify.test.ts` covers:
+- the permission check;
+- a red-flag check-in at 11:30 PM held for the owner only, with the urgent fall alert texted to both;
+- a dose-reminder prompt not texted;
+- the next evening's summary text, with the held line, sent once and stored as `daily_sms`;
+- the urgent-gap warning;
+- dose-engine check-in prompts at 11:00 and 15:15, skipped after a check-in.
+
+**Not verified:** a live Convex deployment (the sandbox can't download the local backend), so `convex/_generated/api.d.ts` was edited by hand (adds `notify`, `summary`). **Run `npx convex dev` once.** Also not verified: live Twilio, and a check-in spoken by real Claude and Cartesia.
+
+**Open**
+- Waking hours for check-ins are fixed at 9–9.
+- The patient's `/care` view doesn't show notification preferences, only `/settings` and the hub do.
+- No inbound SMS ("I've got it").
+
+---
+
 ## 2026-10-24: Clerk sign-in (off until keys are set)
 
 Clerk app `app_3L8w9uL7WMgglgSoAK50VLOntIN` (chosen in the Clerk Dashboard). The Clerk CLI couldn't reach Clerk from the build sandbox, so this is the manual Next.js setup; no keys are committed.
@@ -58,6 +101,56 @@ Closes the software side of Layer 1 and most of Layer 2 from the design doc (no 
 - **Deploy:** run `npx convex deploy` (new tables, indexes, crons). Existing seeded Margaret keeps her old 3-day history; press **Reset demo data** on /demo.
 - Hub reminders need `/hub` open (it's the band's stand-in). Two open `/hub` tabs on the same patient will both speak.
 - No auth (patient picker per browser; `/settings` has a demo "Manage as the owner" switch). No SMS here — see `feat/voice-on-task` (Twilio); when it lands, route `raiseAlert` notify/urgent through its `openAlert` texting.
+
+---
+
+## 2026-10-24: Voice agent stays on task
+
+The voice agent was drifting into small talk. `lib/voice/prompt.ts` now has a **Staying on task** section. Cadence is still warm, but every reply should serve recovery (meds, symptoms, pain, mobility, sleep, mood). It doesn't start small talk or ask questions just to keep the patient talking. When the patient goes off-topic, it acknowledges briefly and steers back. It declines trivia and general questions. Once the reason for the conversation is handled, it closes in one sentence. The persona line changed from "caring friend" to "caring nurse who has a few minutes".
+- Not yet checked against live Claude.
+
+---
+
+## 2026-10-23: Text alerts (SMS via Twilio)
+
+Every alert Cadence raises now **texts the care team**. That covers the agent's `alert_care_team`, red-flag check-ins, and a declined first-boot consent.
+
+**How it works**
+- `convex/notify.ts` `openAlert()` is now the only way to create an alert. It inserts the row and schedules the `textAlert` internal action, which sends through Twilio's REST API (`lib/notify/twilio.ts`, plain fetch with no SDK) and logs every attempt to the new `textMessages` table (`sent`/`failed`/`skipped`).
+- **Dry run by default.** Without Twilio env vars on the Convex deployment, texts are logged as `skipped` with the body that would have gone out. The hub card shows "Dry run".
+- **Who gets texted** (`lib/notify/plan.ts`, unit-tested):
+  - `urgent`: everyone with alerts who has `urgentAlerts` on.
+  - `notify`: everyone with alerts.
+  - `ask`: the owner only.
+  - Doctors and the patient are never texted.
+  - One text per phone number. Heads-ups go to the same phone at most once per 10 minutes; urgent alerts always go.
+- Message: `Cadence · URGENT for Margaret (3:42 PM): <reason> Reply STOP to opt out.`, capped at 300 chars (two SMS segments).
+
+**Where numbers come from** (`careTeamMembers.phone`, E.164 via `lib/notify/phone.ts`)
+- Setup's "You" step has an optional **Your mobile** field.
+- An invite's "Email or phone" becomes the member's alert number when they accept, if it's a phone.
+- On `/hub`, once the band is paired, a **Text alerts** card lists recipients with masked numbers. It has Add/Change number and **Send test** buttons, plus the recent send log. The owner or patient can edit anyone's number; others can edit only their own.
+
+**Turning it on**
+```
+npx convex env set TWILIO_ACCOUNT_SID AC...
+npx convex env set TWILIO_AUTH_TOKEN ...
+npx convex env set TWILIO_FROM +1...   # your Twilio number, or a Messaging Service SID (MG...)
+```
+Use `--prod` as well for the cloud deployment.
+
+**Twilio trial accounts can't send custom text.** Twilio rejects it with error 572006. A trial can send only Twilio's predefined templates (`sms_internal_alerts`, `sms_account_alerts`, …), passed as the body, and only to numbers verified in the console. Set `TWILIO_TRIAL_TEMPLATE=sms_internal_alerts` and that template goes out in place of Cadence's message. The real message is still logged, with a note in the hub's send log. Remove the variable after upgrading. Production US texting also needs A2P 10DLC or toll-free verification.
+
+**Verified:** `tsc`, `eslint`, 73 unit tests (18 new in `lib/notify/notify.test.ts`). Dry-run end to end on the local Convex deployment: setup with a phone, then urgent + notify alerts, then three `skipped` texts logged to Sarah with the right bodies. Non-members get `null` from `notify.overview` and are refused by `setMemberPhone`. This left a test patient, "SMS Test Patient" (owner `sms-e2e`), in the local deployment.
+
+**Verified live (trial):** a test text and an urgent alert both went out through the `sms_internal_alerts` template and arrived on a real phone.
+
+**Not verified:** custom text on an upgraded account, and the hub card in a browser. There's no delivery status callback yet, so the log records Twilio's "accepted", not "delivered".
+
+**Open**
+- No calling yet; texting only. A voice call could reuse `planTexts` for routing and Cartesia for the voice.
+- No "I've got it" reply handling. Twilio inbound webhooks could acknowledge the alert (`alerts.status`).
+- Same auth gap as the rest of the app: `userId` is the demo identity.
 
 ---
 
@@ -172,7 +265,7 @@ First live end-to-end run with real Claude and Cartesia keys (keys live in `.env
 **Structure (top → bottom)**
 - **Loader**: wordmark letters rise in, and an "experience is loading" bar counts to 100%. Then it clip-wipes away and the hero reveals.
 - **Story stage** (`story-stage.tsx`): a sticky painted dusk sky (`sky.tsx`) plus a **particle canvas** (`particle-field.tsx`) behind the hero and 4 beats. Each beat **morphs** ~2.4k particles into its shape as it crosses mid-screen: ECG heartbeat line → capsule (Reminds) → voice wave (Listens) → heart (Cares) → sphere (Our people). Particles sway gently (no full spin, so the flat heartbeat line never turns edge-on; no pulsing), scatter from the cursor and spring back. The sky layers parallax with the pointer. A right-edge index shows the active beat.
-- **What it does** (`feature-wheel.tsx`): a pinned scroll wheel of capabilities. The centred row is lit with ↪, and hovering selects a row.
+- **What it does** (`feature-wheel.tsx`): a pinned scroll wheel of capabilities. The centred row is lit with →, and hovering selects a row.
 - **Some / of the / surfaces** (`surfaces.tsx`): tilt-on-hover cards linking to `/hub`, `/care`, `/demo`, `/settings`.
 - **A day with Cadence** (`day-timeline.tsx`): an awards-table-style ledger of a day's moments.
 - **Closing** (`closing.tsx`): CTA, link columns, giant wordmark. Also a floating **glass pill nav** (`pill-nav.tsx`) and a **cursor glow** (`cursor-glow.tsx`).
@@ -190,6 +283,8 @@ First live end-to-end run with real Claude and Cartesia keys (keys live in `.env
 - Emotion's display serif is proprietary, so **Instrument Serif** stands in. Their 3D WebGL landscape is approximated with 2D canvas plus layered SVG.
 - Gotcha: tokens in `@theme inline` are **not** emitted as CSS variables. Hand-written CSS in `globals.css` must use the next/font vars (`--font-instrument-serif`, `--font-plex-mono`) or literal values, not `var(--font-display)` / `var(--color-violet)`.
 - Headlines are plain italic + uppercase lines; the ↪ indents were removed by request.
+- Fixed (whole app): `--font-sans` in `globals.css` referenced itself, so all sans text fell back to Times. It now points at `--font-geist-sans`, so body text, buttons, `/hub` etc. render in Geist.
+- Fixed "What it does" clipping: inactive wheel rows slid right past the column's `overflow-hidden` edge (now slide left), and `splitText` clip wrappers shaved descenders (`use-reveal.ts` pads them with offsetting negative margin).
 - `prefers-reduced-motion` is respected: the loader is skipped, there is no spin or pulse, morphs are instant, and text shows without animation.
 - Triggers use IntersectionObserver rather than anime's `onScroll`. It's simpler, and it behaves identically under React StrictMode's double-mount.
 - Not yet checked on a real phone. Mobile layout centres the shape higher and uses fewer particles (1.1k).
@@ -281,8 +376,9 @@ Response `200 audio/wav` with headers `X-Cadence-Transcript`, `X-Cadence-Reply`,
 ```
 - With `event`: always speaks (fall follow-up, scheduled check-in, forced reminder).
 - Without `event` (polling): speaks only if a dose is currently due **and** its `X-Cadence-Nudge-Key` differs from `lastNudgeKey`; otherwise `204`. The device should store the returned key so it doesn't repeat the reminder.
+- *(2026-10-24, additive)* When polling and no dose is due, it may instead speak a **scheduled check-in** (phase-based cadence, see the 2026-10-24 Tier 1 entry). Same rules: its key looks like `check_in@<ms>`, and sending it back as `lastNudgeKey` suppresses a repeat. A due dose always wins. Responses also carry `X-Cadence-Event` (`dose_due`, `check_in`, …), which devices may ignore.
 
-Response `200 audio/wav` + `X-Cadence-Reply`, `X-Cadence-Actions`, `X-Cadence-Nudge-Key`, or `204`.
+Response `200 audio/wav` + `X-Cadence-Reply`, `X-Cadence-Actions`, `X-Cadence-Nudge-Key`, `X-Cadence-Event`, or `204`.
 
 **`GET /api/voice/patient?patientId=`**: patient and today's dose slots as JSON (simulator display). Defaults to the first patient.
 

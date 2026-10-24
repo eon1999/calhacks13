@@ -11,6 +11,7 @@ export const ALERT_KINDS = [
   "fall_check", // "are you okay?"
   "sos_prompt",
   "low_activity", // long stillness: gentle nudge to move
+  "check_in", // phase-based scheduled check-in (lib/voice/events.ts)
   // "notify" / "urgent" tier: the care team.
   "missed_dose",
   "extra_opening",
@@ -32,6 +33,7 @@ export const PROMPT_EVENTS = {
   fall_check: "fall",
   sos_prompt: "sos",
   low_activity: "low_activity",
+  check_in: "check_in",
 } as const satisfies Partial<Record<AlertKind, string>>;
 export type PromptKind = keyof typeof PROMPT_EVENTS;
 

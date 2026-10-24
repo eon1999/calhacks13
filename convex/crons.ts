@@ -10,4 +10,7 @@ crons.interval("dose engine", { minutes: 1 }, internal.doses.tick, {});
 // Daily care-partner summary at 8 PM in each patient's time zone.
 crons.hourly("daily summaries", { minuteUTC: 2 }, internal.reports.dueDailySummaries, {});
 
+// Daily summary *texts* (short, rule-based) at each member's own time (convex/summary.ts).
+crons.interval("daily summary texts", { minutes: 15 }, internal.summary.sendDueSummaries, {});
+
 export default crons;

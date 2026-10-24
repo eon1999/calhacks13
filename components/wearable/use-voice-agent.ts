@@ -176,14 +176,15 @@ export function useVoiceAgent(patientId?: string) {
         if (!res.ok) throw new Error(await errorMessage(res));
         const key = header(res, "X-Cadence-Nudge-Key");
         if (key) lastNudgeKey.current = key;
-        append({ who: "event", text: EVENT_LABELS[event ?? "dose_due"] });
+        const spoken = (header(res, "X-Cadence-Event") || event || "dose_due") as WearableEvent;
+        append({ who: "event", text: EVENT_LABELS[spoken] ?? EVENT_LABELS.dose_due });
         setStatus("thinking");
         await speak(res);
       }),
     [patient, sessionId, run, append, speak],
   );
 
-  // Poll for due-dose reminders, like the wearable's heartbeat will.
+  // Poll for due-dose reminders and scheduled check-ins, like the wearable's heartbeat will.
   useEffect(() => {
     if (!patient || !autoReminders) return;
     const tick = () => void nudge();

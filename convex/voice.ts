@@ -1,5 +1,6 @@
 import { v, type ObjectType } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server";
+import { resolvePreferences } from "../lib/notify/preferences";
 import { localDayBounds } from "../lib/schedule";
 import { raiseAlert } from "./alerts";
 import { isCareAlert } from "../lib/alerts";
@@ -80,7 +81,7 @@ export const getContext = query({
         name: m.name ?? "a care team member",
         role: m.role,
         relationship: m.relationship,
-        urgentAlerts: m.urgentAlerts ?? false,
+        urgentAlerts: resolvePreferences(m.notifications, m.urgentAlerts).urgent,
       }));
 
     return { patient, medications, doseEvents, lastCheckIn, checkInsToday, alertsToday, careTeam, recentCheckIns };

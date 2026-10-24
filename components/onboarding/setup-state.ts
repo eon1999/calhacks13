@@ -18,6 +18,7 @@ export type StepId = (typeof STEPS)[number]["id"];
 
 export interface SetupDraft {
   ownerName: string;
+  ownerPhone: string;
   relationship: string;
   patientName: string;
   preferredName: string;
@@ -44,6 +45,7 @@ const KEY = "cadence.setup";
 function emptyDraft(): SetupDraft {
   return {
     ownerName: "",
+    ownerPhone: "",
     relationship: "",
     patientName: "",
     preferredName: "",

@@ -44,7 +44,7 @@ Signed in, Convex identifies you by your Clerk user id (`convex/identity.ts`), s
 | `/hub` | Patient | The band/hub: clock, next dose, captions, Yes/No buttons, "Are you okay?" fall check, push-to-talk voice agent, and the 3D band and debug tools |
 | `/care` | Care partner | Live alerts with acknowledge, today's doses and timeline, activity, this week's adherence, Claude's daily summary |
 | `/clinician/[patientId]` | Clinician | Date-range report: adherence, pain vs. time since dose, activity, events, check-in states, Claude observations citing evidence rows; print to PDF; FHIR export |
-| `/settings` | Care team | Medicines and schedule, care team permissions and invites, devices and tokens |
+| `/settings` | Care team | Medicines and schedule, care team permissions and invites, devices and tokens, and each person's text notifications (presets, quiet hours, daily summary time) |
 | `/demo` | Team | Simulate every device event (lid, fall, SOS, activity, offline), run the dose engine, reset demo data |
 
 Keep `/hub` open in one tab while pressing buttons on `/demo`: the hub speaks whatever the server raises.

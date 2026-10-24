@@ -47,6 +47,7 @@ export async function createDemoPatient(ctx: MutationCtx): Promise<Id<"patients"
     relationship: "Daughter",
     isOwner: true,
     urgentAlerts: true,
+    phone: "+14155550101", // fictional 555-01xx, so text alerts show in the log without reaching anyone
     joinedAt: now,
   });
   await ctx.db.insert("careTeamMembers", {
@@ -56,6 +57,7 @@ export async function createDemoPatient(ctx: MutationCtx): Promise<Id<"patients"
     permissions: ["alerts"],
     name: "Maria",
     urgentAlerts: true,
+    phone: "+14155550102",
     joinedAt: now,
   });
   await ctx.db.insert("careTeamMembers", {

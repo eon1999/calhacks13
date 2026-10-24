@@ -19,6 +19,7 @@ import type * as doses from "../doses.js";
 import type * as http from "../http.js";
 import type * as identity from "../identity.js";
 import type * as invites from "../invites.js";
+import type * as notify from "../notify.js";
 import type * as onboarding from "../onboarding.js";
 import type * as pairing from "../pairing.js";
 import type * as profile from "../profile.js";
@@ -26,6 +27,7 @@ import type * as reports from "../reports.js";
 import type * as safety from "../safety.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
+import type * as summary from "../summary.js";
 import type * as voice from "../voice.js";
 import type * as watchList from "../watchList.js";
 
@@ -47,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   identity: typeof identity;
   invites: typeof invites;
+  notify: typeof notify;
   onboarding: typeof onboarding;
   pairing: typeof pairing;
   profile: typeof profile;
@@ -54,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   safety: typeof safety;
   seed: typeof seed;
   settings: typeof settings;
+  summary: typeof summary;
   voice: typeof voice;
   watchList: typeof watchList;
 }>;

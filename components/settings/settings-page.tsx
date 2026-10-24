@@ -12,8 +12,9 @@ import { procedureLabel, type ProcedureId } from "@/lib/onboarding/recovery";
 import { CareTeamPanel } from "./care-team-panel";
 import { DevicesPanel } from "./devices-panel";
 import { MedicationsPanel } from "./medications-panel";
+import { NotificationsPanel } from "./notifications-panel";
 
-/** /settings: medicines, care team and permissions, devices. */
+/** /settings: medicines, care team and permissions, text notifications, devices. */
 export function SettingsPage() {
   const { patients, patient, select, loading } = useSelectedPatient();
   return (
@@ -105,6 +106,7 @@ function Settings({ patientId }: { patientId: Id<"patients"> }) {
         members={overview.members}
         invites={overview.pendingInvites}
       />
+      <NotificationsPanel userId={userId} patientId={patientId} />
       <DevicesPanel userId={userId} patientId={patientId} />
     </div>
   );

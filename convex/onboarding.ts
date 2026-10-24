@@ -1,6 +1,7 @@
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { toE164 } from "../lib/notify/phone";
 import { MAX_HEALTH_ITEMS, mobilityId } from "../lib/onboarding/health";
 import { resolveUserId } from "./identity";
 
@@ -40,6 +41,14 @@ export function text(value: string, field: string, max = MAX_TEXT): string {
 
 export function optionalText(value: string | undefined, field: string, max = MAX_TEXT): string | undefined {
   return value?.trim() ? text(value, field, max) : undefined;
+}
+
+/** A phone number for text alerts, in E.164, or undefined when left blank. */
+export function optionalPhone(value: string | undefined): string | undefined {
+  if (!value?.trim()) return undefined;
+  const phone = toE164(value);
+  if (!phone) throw new Error(`"${value.trim()}" isn't a phone number Cadence can text`);
+  return phone;
 }
 
 function validTimeZone(timeZone: string): string {
@@ -111,10 +120,11 @@ export const createPatient = mutation({
   args: {
     userId: v.string(),
     ownerName: v.string(),
+    ownerPhone: v.optional(v.string()),
     relationship: v.optional(v.string()),
     ...patientInput,
   },
-  handler: async (ctx, { userId: claimed, ownerName, relationship, ...patient }) => {
+  handler: async (ctx, { userId: claimed, ownerName, ownerPhone, relationship, ...patient }) => {
     const userId = await resolveUserId(ctx, claimed);
     const patientId = await ctx.db.insert("patients", {
       ...cleanPatient(patient),
@@ -129,6 +139,7 @@ export const createPatient = mutation({
       relationship: optionalText(relationship, "Relationship"),
       isOwner: true,
       urgentAlerts: true,
+      phone: optionalPhone(ownerPhone),
       joinedAt: Date.now(),
     });
     return patientId;
@@ -140,15 +151,17 @@ export const updatePatient = mutation({
     userId: v.string(),
     patientId: v.id("patients"),
     ownerName: v.string(),
+    ownerPhone: v.optional(v.string()),
     relationship: v.optional(v.string()),
     ...patientInput,
   },
-  handler: async (ctx, { userId, patientId, ownerName, relationship, ...patient }) => {
+  handler: async (ctx, { userId, patientId, ownerName, ownerPhone, relationship, ...patient }) => {
     const member = await requireManager(ctx, patientId, userId);
     await ctx.db.patch(patientId, cleanPatient(patient));
     await ctx.db.patch(member._id, {
       name: text(ownerName, "Your name"),
       relationship: optionalText(relationship, "Relationship"),
+      phone: optionalPhone(ownerPhone),
     });
   },
 });

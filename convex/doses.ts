@@ -13,7 +13,10 @@ import {
   type EngineSlot,
   type LidOpenMatch,
 } from "../lib/dose-engine";
+import { localDateKey, PHASES, recoveryStatus } from "../lib/onboarding/recovery";
+import { formatClock } from "../lib/notify/preferences";
 import { localDayBounds } from "../lib/schedule";
+import { dueScheduledCheckIn } from "../lib/voice/events";
 
 // The dose engine. `tick` runs every minute (convex/crons.ts): it opens dose
 // rows, schedules reminders at T and T+15 (spoken by the hub/band), marks
@@ -132,6 +135,7 @@ export async function tickPatient(ctx: MutationCtx, patient: Doc<"patients">, no
   }
 
   const lowActivity = await checkLowActivity(ctx, patient, now);
+  const scheduledCheckIn = await checkScheduledCheckIn(ctx, patient, now);
 
   return {
     created: plan.create.length,
@@ -139,6 +143,7 @@ export async function tickPatient(ctx: MutationCtx, patient: Doc<"patients">, no
     missed: plan.missed.length,
     missedAlerts: plan.missedAlerts.length,
     lowActivity,
+    scheduledCheckIn,
   };
 }
 
@@ -162,6 +167,52 @@ async function checkLowActivity(ctx: MutationCtx, patient: Doc<"patients">, now:
     tier: "ask",
     kind: "low_activity",
     reason: `${firstName(patient)} has barely moved in 3 hours. Cadence will suggest a short walk if their care plan allows.`,
+    at: now,
+  });
+  return true;
+}
+
+/**
+ * Phase-based scheduled check-ins (3×/day in the first days home, easing to
+ * every other day): raise an "ask" prompt for the hub/band to speak, once per
+ * slot, never while a dose reminder or another prompt is waiting.
+ */
+async function checkScheduledCheckIn(ctx: MutationCtx, patient: Doc<"patients">, now: number): Promise<boolean> {
+  if (!patient.recovery) return false;
+  const { start } = localDayBounds(patient.timeZone, now);
+  const [meds, checkIns, alerts] = await Promise.all([
+    ctx.db
+      .query("medications")
+      .withIndex("by_patient", (q) => q.eq("patientId", patient._id))
+      .filter((q) => q.eq(q.field("active"), true))
+      .collect(),
+    ctx.db
+      .query("checkIns")
+      .withIndex("by_patient_time", (q) => q.eq("patientId", patient._id).gte("at", start))
+      .collect(),
+    ctx.db
+      .query("alerts")
+      .withIndex("by_patient_created", (q) => q.eq("patientId", patient._id).gte("createdAt", start))
+      .collect(),
+  ]);
+  const status = recoveryStatus(patient.recovery.surgeryDate, localDateKey(patient.timeZone, now));
+  const due = dueScheduledCheckIn({
+    recovery: status,
+    doses: meds.flatMap((m) => m.times.map((time) => ({ time, windowMinutes: m.windowMinutes }))),
+    checkInTimes: checkIns.map((c) => c.at),
+    timeZone: patient.timeZone,
+    now,
+  });
+  if (!due) return false;
+  if (alerts.some((a) => a.kind === "check_in" && a.refId === due.key)) return false;
+  // Don't talk over a dose reminder, a fall check or a move nudge that's still waiting.
+  if (alerts.some((a) => a.status === "open" && a.tier === "ask" && a.kind && !a.deliveredAt)) return false;
+  await raiseAlert(ctx, {
+    patientId: patient._id,
+    tier: "ask",
+    kind: "check_in",
+    reason: `Time for ${firstName(patient)}'s ${formatClock(due.time)} check-in (${PHASES[status.phase].label.toLowerCase()}).`,
+    refId: due.key,
     at: now,
   });
   return true;

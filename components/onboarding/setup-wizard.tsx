@@ -22,6 +22,7 @@ const NEEDS_PATIENT: StepId[] = ["health", "meds", "band", "team", "done"];
 function patientArgs(draft: SetupDraft) {
   return {
     ownerName: draft.ownerName,
+    ownerPhone: draft.ownerPhone || undefined,
     relationship: draft.relationship || undefined,
     name: draft.patientName,
     preferredName: draft.preferredName || undefined,

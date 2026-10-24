@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { toE164 } from "../lib/notify/phone";
 import { resolveOptionalUserId, resolveUserId } from "./identity";
 import { ROLES } from "../lib/onboarding/roles";
 import { membership, requireManager } from "./onboarding";
@@ -128,6 +129,8 @@ export const accept = mutation({
         permissions: role.permissions,
         name: cleanName,
         urgentAlerts: role.urgentByDefault,
+        // The invite's contact becomes their alert number when it's a phone.
+        phone: invite.contact ? (toE164(invite.contact) ?? undefined) : undefined,
         joinedAt: now,
       });
     }
