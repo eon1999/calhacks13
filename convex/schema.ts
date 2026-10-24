@@ -121,6 +121,18 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_patient_kind", ["patientId", "kind"]),
 
+  // Voice agent conversation memory. One sessionId per wearable conversation.
+  // "event" turns are things the wearable reported (dose due, check-in timer),
+  // replayed to Claude as user-side context.
+  voiceTurns: defineTable({
+    patientId: v.id("patients"),
+    sessionId: v.string(),
+    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("event")),
+    text: v.string(),
+    event: v.optional(v.string()), // WearableEvent, on role "event" turns
+    at: v.number(),
+  }).index("by_session", ["sessionId", "at"]),
+
   devices: defineTable({
     patientId: v.id("patients"),
     kind: v.union(v.literal("wristband"), v.literal("med_station")),
