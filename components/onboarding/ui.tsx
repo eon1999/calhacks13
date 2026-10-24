@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { Wordmark } from "@/components/landing/wordmark";
@@ -94,43 +95,13 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea {...props} className={`${control} min-h-24 py-3 ${props.className ?? ""}`} />;
 }
 
-export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`${control} h-12 appearance-none ${props.className ?? ""}`} />;
-}
-
-/** A selectable card (procedure, role, relationship). */
-export function ChoiceCard({
-  selected,
-  onSelect,
-  title,
-  body,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  title: string;
-  body?: string;
-}) {
+/** A native dropdown with our own chevron (the browser's is hidden by `appearance-none`). */
+export function Select({ className = "", ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={onSelect}
-      className={`rounded-2xl border px-4 py-3 text-left transition-all duration-300 focus-visible:ring-2 focus-visible:ring-violet/40 outline-none ${
-        selected
-          ? "border-violet bg-white/85 shadow-[0_10px_30px_-14px_rgb(113_20_255/0.55)]"
-          : "border-plum/10 bg-white/40 hover:border-plum/30 hover:bg-white/60"
-      }`}
-    >
-      <span className="flex items-center gap-2 font-display text-xl">
-        <span
-          aria-hidden
-          className={`inline-block size-2 rounded-full transition-colors ${selected ? "bg-violet" : "bg-plum/20"}`}
-        />
-        {title}
-      </span>
-      {body && <span className="mt-1 block text-sm text-plum-muted">{body}</span>}
-    </button>
+    <div className={`relative ${className}`}>
+      <select {...props} className={`${control} h-12 cursor-pointer appearance-none pr-11`} />
+      <ChevronDown aria-hidden className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-plum-muted" />
+    </div>
   );
 }
 

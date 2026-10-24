@@ -1,12 +1,11 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { localDateKey, PHASES, PROCEDURES, recoveryStatus } from "@/lib/onboarding/recovery";
+import { localDateKey, PHASES, PROCEDURES, recoveryStatus, type ProcedureId } from "@/lib/onboarding/recovery";
 import { RELATIONSHIPS } from "@/lib/onboarding/roles";
 import { toE164 } from "@/lib/notify/phone";
 import type { SetupDraft } from "../setup-state";
 import {
-  ChoiceCard,
   ErrorNote,
   Field,
   PrimaryButton,
@@ -77,27 +76,16 @@ export function YouStep({ draft, updateDraft, onNext }: ProfileStepProps) {
           />
         </Field>
 
-        <div className="space-y-2">
-          <p className="mono-label text-plum-muted">You are their…</p>
-          <div role="radiogroup" aria-label="Relationship" className="flex flex-wrap gap-2">
+        <Field label="You are their…" htmlFor="relationship">
+          <Select id="relationship" value={draft.relationship} onChange={(e) => updateDraft({ relationship: e.target.value })}>
+            <option value="" disabled>
+              Choose one
+            </option>
             {RELATIONSHIPS.map((r) => (
-              <button
-                key={r}
-                type="button"
-                role="radio"
-                aria-checked={draft.relationship === r}
-                onClick={() => updateDraft({ relationship: r })}
-                className={`rounded-full border px-4 py-2 text-sm transition-colors ${
-                  draft.relationship === r
-                    ? "border-violet bg-violet text-white"
-                    : "border-plum/15 bg-white/50 hover:border-plum/40"
-                }`}
-              >
-                {r}
-              </button>
+              <option key={r}>{r}</option>
             ))}
-          </div>
-        </div>
+          </Select>
+        </Field>
       </div>
 
       <StepActions>
@@ -206,16 +194,22 @@ export function RecoveryStep({
       </StepHeading>
 
       <div className="max-w-2xl space-y-10">
-        <div role="radiogroup" aria-label="Procedure" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {PROCEDURES.map((p) => (
-            <ChoiceCard
-              key={p.id}
-              title={p.label}
-              selected={draft.procedure === p.id}
-              onSelect={() => updateDraft({ procedure: p.id })}
-            />
-          ))}
-        </div>
+        <Field label="Surgery" htmlFor="procedure">
+          <Select
+            id="procedure"
+            value={draft.procedure}
+            onChange={(e) => updateDraft({ procedure: e.target.value as ProcedureId })}
+          >
+            <option value="" disabled>
+              Choose the surgery
+            </option>
+            {PROCEDURES.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
         {draft.procedure === "other" && (
           <Field label="What was the surgery?" htmlFor="procedureOther">

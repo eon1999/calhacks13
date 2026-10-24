@@ -12,6 +12,7 @@ import {
   Field,
   PrimaryButton,
   SecondaryButton,
+  Select,
   StepActions,
   StepHeading,
   TextButton,
@@ -23,6 +24,35 @@ const FREQUENCIES = [
   { label: "Twice a day", times: ["08:00", "20:00"] },
   { label: "Three times a day", times: ["08:00", "14:00", "20:00"] },
   { label: "Every 6 hours", times: ["06:00", "12:00", "18:00", "00:00"] },
+];
+
+const CUSTOM_FREQUENCY = "custom";
+
+/** Which preset the chosen times match, so the dropdown reflects hand-edited times as "Custom". */
+function frequencyFor(times: string[]): string {
+  const key = [...times].sort().join(",");
+  return FREQUENCIES.find((f) => [...f.times].sort().join(",") === key)?.label ?? CUSTOM_FREQUENCY;
+}
+
+// Suggestions for the Medicine field; anything else can still be typed.
+const COMMON_MEDS = [
+  "Acetaminophen (Tylenol)",
+  "Ibuprofen (Advil)",
+  "Oxycodone",
+  "Hydrocodone / acetaminophen (Norco)",
+  "Tramadol",
+  "Gabapentin",
+  "Cephalexin (Keflex)",
+  "Amoxicillin",
+  "Apixaban (Eliquis)",
+  "Rivaroxaban (Xarelto)",
+  "Enoxaparin (Lovenox)",
+  "Aspirin",
+  "Warfarin",
+  "Metoprolol",
+  "Ondansetron (Zofran)",
+  "Docusate (Colace)",
+  "Senna",
 ];
 
 interface MedForm {
@@ -148,8 +178,15 @@ export function MedsStep({ userId, patientId, patientName, medications, onNext, 
                 id="medName"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Cephalexin"
+                placeholder="Pick or type a medicine"
+                list="commonMeds"
+                autoComplete="off"
               />
+              <datalist id="commonMeds">
+                {COMMON_MEDS.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
             </Field>
             <Field label="Dose" htmlFor="medDose">
               <TextInput
@@ -162,19 +199,22 @@ export function MedsStep({ userId, patientId, patientName, medications, onNext, 
           </div>
 
           <div className="space-y-3">
-            <p className="mono-label text-plum-muted">How often</p>
-            <div className="flex flex-wrap gap-2">
-              {FREQUENCIES.map((f) => (
-                <button
-                  key={f.label}
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, times: f.times }))}
-                  className="rounded-full border border-plum/15 bg-white/50 px-3 py-1.5 text-sm transition-colors hover:border-violet"
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
+            <Field label="How often" htmlFor="medFrequency">
+              <Select
+                id="medFrequency"
+                className="sm:max-w-xs"
+                value={frequencyFor(form.times)}
+                onChange={(e) => {
+                  const preset = FREQUENCIES.find((f) => f.label === e.target.value);
+                  if (preset) setForm((prev) => ({ ...prev, times: preset.times }));
+                }}
+              >
+                {FREQUENCIES.map((f) => (
+                  <option key={f.label}>{f.label}</option>
+                ))}
+                <option value={CUSTOM_FREQUENCY}>Custom times</option>
+              </Select>
+            </Field>
             <div className="flex flex-wrap items-center gap-2">
               {form.times.map((t) => (
                 <span key={t} className="tag-pill">

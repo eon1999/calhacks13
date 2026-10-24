@@ -5,6 +5,18 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Setup pickers are dropdowns
+
+Setup's button groups are now dropdowns, so each step is a short column of fields instead of a wall of pills and cards.
+- **Medicines** (`steps/meds-step.tsx`): **How often** is a dropdown of the presets. Adding or removing a time by hand switches it to **Custom times**, and the time chips and "+ Add time" still sit below it. The **Medicine** field suggests 17 common post-op medicines (painkillers, antibiotics, blood thinners, anti-nausea, stool softeners) through a `<datalist>`, and you can still type anything or scan the label.
+- **Their recovery**: the surgery is a dropdown. "Something else" still opens the free-text field.
+- **You**: "You are their…" is a dropdown.
+- **Care team**: the invite role is a dropdown. The role's one-line description shows under it.
+- `Select` in `components/onboarding/ui.tsx` now draws its own chevron, and its `className` goes on the wrapper. `ChoiceCard` is gone because nothing uses it.
+- Action buttons stay buttons, since each one does something when you click it: the debugger's events and phrases, the family-text triggers, and **Try it**.
+
+**Verified:** `tsc`, `eslint`, 77 unit tests. In the browser, each dropdown shows the saved value. Picking a preset sets the times, and adding a time flips it to Custom times. "Something else" opens the text field, and the role hint follows the selection. There were no console errors.
+
 ## 2026-10-24: Family text triggers in the debugger, demo flow for judges
 
 **Debugger: Text the family** (`/hub` → Debug tools, `components/wearable/family-texts-section.tsx`)
