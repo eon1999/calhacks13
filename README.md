@@ -114,12 +114,13 @@ The URL comes from `NEXT_PUBLIC_CONVEX_SITE_URL` in `.env.local` (`FAKE_BAND_URL
 ```bash
 npm test      # vitest: lib/**/*.test.ts and tests/convex (Convex functions against convex-test's in-memory backend)
 npm run lint
+npm run firmware:test   # band firmware logic (firmware/band/lib/cadence_core), built with g++ on this machine
 ```
 
 ## Known limitations
 
 - **Auth is opt-in.** Clerk is wired in but off until keys are set, and signed-out demo identities still work unless `CADENCE_REQUIRE_AUTH=1`. Dashboard, report, voice and /demo functions don't yet check care-team membership or permissions (marked `TODO(auth)`).
-- **No firmware yet.** `/demo` and the `/hub` simulator stand in for the band and pillbox; the device routes are ready for it.
+- **Band firmware is untested on hardware.** `firmware/band` (ESP32) has tested core logic and a `band-sim` build for a bare board, but hasn't been compiled for or run on a real band yet. The pillbox has no firmware. `/demo`, the `/hub` simulator and `npm run fake-band` stand in for both.
 - Alerts reach the care partner on `/care` (with a browser notification when the tab is open). No SMS or push yet.
 - Moss isn't wired up (no key); the agent's memory of earlier check-ins comes from Convex.
 - Not clinical-grade: thresholds are starting points, and reports are observations, not advice.

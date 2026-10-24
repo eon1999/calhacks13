@@ -5,6 +5,19 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Band firmware (ESP32), written ahead of the hardware
+
+`firmware/band` is a PlatformIO project for the wristband: steps, heart rate, falls and SOS, posted to the device API. The LED and buzz follow the heartbeat reply. No voice on the band: the phone does that. See `firmware/band/README.md`.
+- **Core logic** (`lib/cadence_core`, no Arduino code): `StepCounter` (gravity removed, runs of 4 so waving isn't walking), `FallDetector` (free fall, then a ≥2.5 g impact within 1 s, then 1.5 s still), `BeatDetector` (BPM from the MAX30102's raw IR wave, 0 off-wrist or stale), `ActivityWindow` (per-window counts, cleared only after the server takes them), JSON writers and a heartbeat reply parser, and `synthetic` signals.
+- **Tests** (`npm run firmware:test`): 34 cases, built with g++ (`-Wall -Wextra -Werror`) on this machine against synthetic walking, falls, bumps and pulses from 50 to 150 bpm. They use a tiny harness in `test/native/check.h`, so nothing needs downloading.
+- **ESP32 side** (`src/`): a 50 Hz sensor task, separate from the HTTP loop, so a fall isn't missed during a slow request. MPU6050 (raw I2C, ±8 g) and MAX30102 (SparkFun library, 50 sps) drivers. Event retry every 5 s (events raised during a request aren't lost), LED patterns that go quiet if heartbeats stop for 90 s, and a 2 s SOS hold on the BOOT button. A C++ review found no compile problems against Arduino-ESP32 2.0.x. It did find nine runtime issues, all fixed: stale buzzing, a chirp stuck on after 24.8 days of uptime, out-of-order pulse timestamps, a lost second event, the sensor task's stack size, the MAX30102 library resetting the I2C pins, a fingertip-only contact threshold (now `config::kNoContactIr`), unverified TLS (now warned at boot), and knocks counting as falls.
+- **`band-sim` build**: the same firmware on a bare ESP32 with made-up sensors, driven from the serial monitor (`w` walk, `f` fall, `s` SOS, `o` off wrist). It posts a window every minute.
+- `npm run fake-band` (previous entry) still covers the server side with no board at all.
+
+**Open:** not yet compiled for ESP32 (no PlatformIO here) or run on a board. Thresholds are tuned on synthetic signals and need real wrist data, especially `kNoContactIr`, and whether slow slumps still count as falls. HTTPS skips certificate checks unless `CADENCE_ROOT_CA` is set. Wi-Fi details are compiled in. No battery, sleep or OTA. The pillbox has no firmware yet.
+
+---
+
 ## 2026-10-24: Fake band for building without hardware
 
 `npm run fake-band` stands in for the wristband. It posts to the real `/device/activity`, `/device/event` and `/device/heartbeat` routes with a device token from `/settings`, so auth, `deviceId` matching and schema errors all get exercised.
