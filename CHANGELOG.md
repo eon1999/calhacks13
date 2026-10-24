@@ -5,6 +5,28 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Urgent alerts phone the emergency contacts; landing page reframed for families
+
+**Urgent-alert phone calls** (`convex/phone.ts`, `lib/phone/plan.ts`)
+- `raiseAlert` now also schedules `phone.callUrgent` for every new **urgent** care alert (SOS, fall with no answer, asked for help, voice-agent emergencies). A duplicate urgent alert merged into an open one isn't called again; the one call reads the merged reason.
+- Who gets called: the patient's emergency contacts (up to 3, normalised to E.164 with `toE164`, duplicates dropped). If there are none, family and caregivers who get urgent alerts and have a phone. Never clinicians.
+- What it says: `WELCOME_MESSAGE` in `lib/phone/script.ts`: "Hi {{contact_name}}, this is Cadence with an urgent alert about {{patient_name}}. {{reason_line}}". `reason_line` is the alert's reason, read word for word. The welcome message and `INSTRUCTIONS` must be pasted into the Cartesia agent; the code only sends the variables.
+- Settings are **Convex** env vars (`CARTESIA_API_KEY`, `CARTESIA_PHONE_AGENT_ID`, `CARTESIA_FROM_NUMBER_ID`). Without them it's a dry run. Every attempt is logged in the `phoneCalls` table (placed / failed / skipped).
+- `lib/phone/calls.ts` now takes a `PhoneConfig` (`phoneConfig(env)`) and returns `{ ok, ... }` instead of throwing, so it runs in Convex actions and the manual `POST /api/phone/call` route alike.
+- **Live-tested:** a real call to a phone, from an urgent "possible seizure" alert on the demo patient. Cartesia accepted the `Authorization: Bearer` header.
+
+**Landing page** (`components/landing/content.ts` and section components, `app/layout.tsx`)
+- Copy now speaks to the family looking after someone: the hero is "Be there even when you can't be", the story beats are Keeps watch / Speaks up / Looks after them / Our people, the features list leads with the family dashboard and alerts, the pages grid leads with `/care` ("Family dashboard"), and the closing line is "Stay close, from anywhere". The "Care" nav link is now "Family". Layout and animations are unchanged.
+
+**Still open**
+- No seizure / sudden-shaking alert kind yet; the live test used `voice.createAlert` with seizure wording.
+- `FALL_ANSWER_MS` (30 s) is long for a live demo; a demo mode could shorten it.
+- No voicemail handling or call-outcome tracking (Cartesia webhooks).
+
+**Verified:** `tsc`, `eslint`, **174 tests** (new: `lib/phone` targeting and variables; `tests/convex/phone.test.ts`, which covers an urgent alert calling once, a notify alert not calling, a merged urgent alert calling once, and a dry run without Cartesia). The demo-seed test in `tests/convex/backend.test.ts` can exceed its 5 s timeout on a busy machine; it passes with `--testTimeout=30000` and isn't affected by this change.
+
+---
+
 ## 2026-10-24: Hub onboarding, 3D band, watch-list research agent and a phone agent skeleton
 
 **`/hub` demo hub** (`components/wearable/hub-demo.tsx`)
@@ -30,7 +52,7 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 **Still open**
 - Nothing uses the watch list yet. Next steps: add it to the voice prompt, and have heart rate and temperature readings raise alerts when they cross its thresholds.
-- Nothing places phone calls automatically yet. Next step: call emergency contacts on fall or urgent alerts. Cartesia's docs disagree on the auth header (Bearer vs `X-API-Key`); Bearer is used, so check it on the first real call.
+- ~~Nothing places phone calls automatically yet.~~ Done: urgent alerts now call (see the entry above).
 - `convex/profile.ts`, `convex/watchList.ts` and `/api/phone/call` need auth. They don't use Clerk yet.
 
 **Verified:** `tsc`, `eslint` on the touched files, vitest (prompt health and emergency-contact tests, phone request/E.164/variable tests). The watch-list agent was run live once against the demo patient.

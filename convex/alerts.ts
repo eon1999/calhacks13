@@ -31,7 +31,8 @@ export interface RaiseArgs {
  * Inserts an alert. Urgent alerts within a couple of minutes of another open
  * urgent alert are merged (the band and the voice agent often both raise one
  * for the same moment). New care-team alerts are also texted
- * (convex/notify.ts, per each member's notification preferences); the band's
+ * (convex/notify.ts, per each member's notification preferences), and urgent
+ * ones phoned through to the emergency contacts (convex/phone.ts); the band's
  * own spoken prompts never are.
  */
 export async function raiseAlert(ctx: MutationCtx, args: RaiseArgs): Promise<Id<"alerts">> {
@@ -58,7 +59,11 @@ export async function raiseAlert(ctx: MutationCtx, args: RaiseArgs): Promise<Id<
     createdAt: at,
     status: "open",
   });
-  if (isCareAlert(args)) await ctx.scheduler.runAfter(0, internal.notify.textAlert, { alertId });
+  if (isCareAlert(args)) {
+    await ctx.scheduler.runAfter(0, internal.notify.textAlert, { alertId });
+    // Urgent ones also get a phone call to the emergency contacts (convex/phone.ts).
+    if (args.tier === "urgent") await ctx.scheduler.runAfter(0, internal.phone.callUrgent, { alertId });
+  }
   return alertId;
 }
 

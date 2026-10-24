@@ -235,6 +235,20 @@ export default defineSchema({
     at: v.number(),
   }).index("by_patient_time", ["patientId", "at"]),
 
+  // Urgent-alert phone calls from the Cartesia phone agent (convex/phone.ts).
+  phoneCalls: defineTable({
+    patientId: v.id("patients"),
+    alertId: v.id("alerts"),
+    memberId: v.optional(v.id("careTeamMembers")), // set when calling a care team member, not an emergency contact
+    name: v.string(),
+    to: v.string(), // E.164
+    problem: v.string(), // the alert reason the agent reads out
+    status: v.union(v.literal("placed"), v.literal("failed"), v.literal("skipped")),
+    reason: v.optional(v.string()), // why it failed or was skipped
+    agentCallId: v.optional(v.string()), // Cartesia call id
+    at: v.number(),
+  }).index("by_patient_time", ["patientId", "at"]),
+
   summaries: defineTable({
     patientId: v.id("patients"),
     // "daily_sms" is the short rule-based text (convex/summary.ts), kept apart

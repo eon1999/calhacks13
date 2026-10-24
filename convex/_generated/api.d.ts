@@ -22,6 +22,7 @@ import type * as invites from "../invites.js";
 import type * as notify from "../notify.js";
 import type * as onboarding from "../onboarding.js";
 import type * as pairing from "../pairing.js";
+import type * as phone from "../phone.js";
 import type * as profile from "../profile.js";
 import type * as reports from "../reports.js";
 import type * as safety from "../safety.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   notify: typeof notify;
   onboarding: typeof onboarding;
   pairing: typeof pairing;
+  phone: typeof phone;
   profile: typeof profile;
   reports: typeof reports;
   safety: typeof safety;
