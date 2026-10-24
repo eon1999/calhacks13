@@ -28,12 +28,15 @@ const body = z.object({
   event: wearableEvent.optional(),
   // Nudge key the device already played; suppresses repeats while still due.
   lastNudgeKey: z.string().max(2000).optional(),
+  // True when the server already logged this event (a prompt from the dose
+  // engine or a device route), so a fall/SOS isn't recorded twice.
+  logged: z.boolean().optional(),
 });
 
 /**
  * Agent speaks first: dose reminders, scheduled check-ins, fall follow-ups.
  *
- * JSON body: { patientId, sessionId, event?, lastNudgeKey? }
+ * JSON body: { patientId, sessionId, event?, lastNudgeKey?, logged? }
  * Responds 204 when there is nothing to say, else audio/wav + X-Cadence-* headers.
  */
 export async function POST(request: Request): Promise<Response> {
@@ -56,7 +59,7 @@ export async function POST(request: Request): Promise<Response> {
 
     // Record falls/SOS before involving the agent, so they're logged even if
     // Claude or TTS fails.
-    if (isSafetyEvent(event)) {
+    if (isSafetyEvent(event) && !parsed.data.logged) {
       await convex().mutation(api.voice.logDeviceEvent, { patientId, type: event });
     }
 

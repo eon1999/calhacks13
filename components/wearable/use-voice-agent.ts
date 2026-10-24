@@ -68,7 +68,9 @@ export function useVoiceAgent(patientId?: string) {
   // Created lazily (not during render) so /hub can still be prerendered.
   const sessionRef = useRef<string | null>(null);
   const sessionId = useCallback(() => (sessionRef.current ??= crypto.randomUUID()), []);
-  const [autoReminders, setAutoReminders] = useState(true);
+  // Off by default: the dose engine (convex/doses.ts) now sends reminders as hub
+  // prompts (use-hub-prompts.ts). Polling stays as a fallback for testers.
+  const [autoReminders, setAutoReminders] = useState(false);
   const lastNudgeKey = useRef<string | undefined>(undefined);
   const busy = useRef(false);
 
@@ -156,7 +158,7 @@ export function useVoiceAgent(patientId?: string) {
   );
 
   const nudge = useCallback(
-    (event?: WearableEvent) =>
+    (event?: WearableEvent, opts: { logged?: boolean } = {}) =>
       run(async () => {
         if (!patient) return;
         const res = await fetch("/api/voice/nudge", {
@@ -167,6 +169,7 @@ export function useVoiceAgent(patientId?: string) {
             sessionId: sessionId(),
             event,
             lastNudgeKey: event ? undefined : lastNudgeKey.current,
+            logged: opts.logged,
           }),
         });
         if (res.status === 204) return;

@@ -204,7 +204,7 @@ export function DebugPanel({ agent, busy }: DebugPanelProps) {
               checked={agent.autoReminders}
               onChange={(e) => agent.setAutoReminders(e.target.checked)}
             />
-            <Activity className="size-4" /> Auto-remind when a dose is due (polls every 30s)
+            <Activity className="size-4" /> Also poll for due doses every 30s (fallback; the dose engine already sends reminders)
           </label>
           <Button variant="destructive" size="sm" disabled={busy} onClick={confirmReset}>
             <Trash2 /> Reset today&apos;s data

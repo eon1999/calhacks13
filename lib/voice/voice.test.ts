@@ -97,6 +97,15 @@ describe("slotsForEvent", () => {
     expect(ids(slotsForEvent("missed_dose", day))).toEqual(["a"]);
     expect(slotsForEvent("fall", day)).toEqual([]);
   });
+  it("lid_opened names the due dose, else the latest unconfirmed one", () => {
+    const withDue = [...day, slot({ slotId: "now", scheduledFor: 2, status: "due" })];
+    expect(ids(slotsForEvent("lid_opened", withDue))).toEqual(["now"]);
+    expect(ids(slotsForEvent("lid_opened", day))).toEqual(["a"]);
+  });
+
+  it("extra_opening names the doses already taken", () => {
+    expect(ids(slotsForEvent("extra_opening", day))).toEqual(["b"]);
+  });
 });
 
 describe("toMessages", () => {
