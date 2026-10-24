@@ -1,7 +1,16 @@
+import type { Metadata } from "next";
+import { ConvexClientProvider } from "@/components/convex-client-provider";
+import { CareDashboard } from "@/components/care/care-dashboard";
+
+export const metadata: Metadata = {
+  title: "Care dashboard · Cadence",
+  description: "Live alerts, doses, check-ins and movement for the person you care for.",
+};
+
 export default function CarePage() {
   return (
-    <main className="p-8">
-      <h1 className="text-3xl font-bold">Care dashboard</h1>
-    </main>
+    <ConvexClientProvider>
+      <CareDashboard />
+    </ConvexClientProvider>
   );
 }

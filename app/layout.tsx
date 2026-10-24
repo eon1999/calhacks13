@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { shadcn } from "@clerk/ui/themes";
+import { ClerkIdentityBridge } from "@/components/auth/clerk-identity";
+import { clerkEnabled } from "@/lib/clerk";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,9 +30,9 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cadence — Care that keeps time with you",
+  title: "Cadence — Be there, even when you can't be",
   description:
-    "A voice wristband for people recovering at home after surgery: spoken dose reminders, plain-language check-ins on pain and healing, and alerts to the care team when it matters.",
+    "Look after a loved one recovering at home after surgery. A voice wristband keeps them on track with doses and check-ins, and tells your family when something needs attention.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -37,7 +41,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${plexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {clerkEnabled ? (
+          <ClerkProvider appearance={{ theme: shadcn }}>
+            <ClerkIdentityBridge>{children}</ClerkIdentityBridge>
+          </ClerkProvider>
+        ) : (
+          children
+        )}
+      </body>
     </html>
   );
 }

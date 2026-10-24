@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@clerk/ui/themes/shadcn.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -222,7 +223,7 @@
 .cadence-theme {
   --background: #fbf8ff;
   --foreground: #2a1647;
-  --card: rgb(255 255 255 / 0.55);
+  --card: rgb(255 255 255 / 0.9);
   --card-foreground: #2a1647;
   --popover: #fbf8ff;
   --popover-foreground: #2a1647;

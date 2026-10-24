@@ -5,6 +5,21 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: feat/voice-on-task merged with main
+
+Both sides kept. Where they overlapped:
+- **Text routing** (`lib/notify/plan.ts`): `planTexts(tier, members, recent, now, timeZone = "UTC", testTo?)` takes main's quiet hours and this branch's debug test phone. The test phone still wins (every alert, unthrottled, ignoring quiet hours). The hub overview returns `testTextTo` alongside main's `patientName`, `urgentGap` and `summaryRecipients`.
+- **Debug alerts** (`convex/debug.ts` → `raiseAlert`) use main's `raiseAlert` with `kind: "voice_agent"`, so they're texted like a real alert. While a test phone is set, `convex/phone.ts` `callUrgent` rings only that number too, so urgent test triggers never phone the real emergency contacts.
+- **`/demo` stays main's team control panel. The judge guide moved to `/try`.** The hub's "Demo guide" link, setup's "Back to the demo guide" and the landing "Try the demo" card point there. The guide's step 3 reads main's `kind === "alert"` on texts (it was `!test`).
+- **`/hub`** keeps main's frame (dusk sky, auth controls) and `HubDemo` (3D band, patient onboarding, now and safety cards, spoken prompts), which owns `band` and `agent` and passes them down. It also takes this branch's mode: `/hub?demo=1` hides onboarding and debug tools, loads nothing until paired, and shows **Try it**. The heading and the Demo view, Demo guide and Debug tools links sit in `HubDemo`, in white. `WearableSimulator({ band, agent, mode })` keeps the restyled lilac cards (now 90% opaque so they read on the sky), the chat bubbles and the right-column layout. Text alerts show for any loaded patient (main), not only a paired one.
+- **`OnboardingShell`** shows main's `AuthControls` next to the label. The `wide` option this branch added for the hub is gone, because the hub no longer uses the shell.
+- **`ChoiceCard` is back**, because main's health step and preferences editor use it. Setup's relationship, surgery and role pickers stay dropdowns. The frequency dropdown and medicine suggestions live in main's `MedicationEditor`.
+- **Landing cards**: main's reframed list, with Demo controls swapped for "Try the demo" (`/try`). Demo controls stays reachable from the app nav and "Seed a demo".
+
+**Verified:** `npm install` (main added Clerk and three.js), `tsc` (app and `convex/`), `eslint`, unit tests, `next build`. Browser checks of `/hub`, `/hub?demo=1`, `/try` and `/demo` are noted in the PR.
+
+---
+
 ## 2026-10-24: Simulator matches the design, headings in sentence case
 
 **Simulator** (`/hub` and `/hub?demo=1`) now uses the landing/setup look instead of grey shadcn defaults.
@@ -52,6 +67,159 @@ Setup's button groups are now dropdowns, so each step is a short column of field
 - **Twilio trial:** a judge's phone only receives texts if it's verified in the Twilio console, and the trial sends the `sms_internal_alerts` template rather than Cadence's message. Upgrade the account (and do A2P 10DLC or toll-free verification) before a live demo where judges use their own phones.
 - `/demo` and `/hub?demo=1` still depend on debug-only routes in one place: "Say the code" (`/api/debug/speak`) needs `CADENCE_DEBUG=1` in production.
 - A forgotten test number overrides the team. The Text alerts card shows a red "Debug: every alert texts the test number…" note while one is set; turn it **Off** when you're done.
+
+---
+
+## 2026-10-24: Urgent alerts phone the emergency contacts; landing page reframed for families
+
+**Urgent-alert phone calls** (`convex/phone.ts`, `lib/phone/plan.ts`)
+- `raiseAlert` now also schedules `phone.callUrgent` for every new **urgent** care alert (SOS, fall with no answer, asked for help, voice-agent emergencies). A duplicate urgent alert merged into an open one isn't called again; the one call reads the merged reason.
+- Who gets called: the patient's emergency contacts (up to 3, normalised to E.164 with `toE164`, duplicates dropped). If there are none, family and caregivers who get urgent alerts and have a phone. Never clinicians.
+- What it says: `WELCOME_MESSAGE` in `lib/phone/script.ts`: "Hi {{contact_name}}, this is Cadence with an urgent alert about {{patient_name}}. {{reason_line}}". `reason_line` is the alert's reason, read word for word. The welcome message and `INSTRUCTIONS` must be pasted into the Cartesia agent; the code only sends the variables.
+- Settings are **Convex** env vars (`CARTESIA_API_KEY`, `CARTESIA_PHONE_AGENT_ID`, `CARTESIA_FROM_NUMBER_ID`). Without them it's a dry run. Every attempt is logged in the `phoneCalls` table (placed / failed / skipped).
+- `lib/phone/calls.ts` now takes a `PhoneConfig` (`phoneConfig(env)`) and returns `{ ok, ... }` instead of throwing, so it runs in Convex actions and the manual `POST /api/phone/call` route alike.
+- **Live-tested:** a real call to a phone, from an urgent "possible seizure" alert on the demo patient. Cartesia accepted the `Authorization: Bearer` header.
+
+**Landing page** (`components/landing/content.ts` and section components, `app/layout.tsx`)
+- Copy now speaks to the family looking after someone: the hero is "Be there even when you can't be", the story beats are Keeps watch / Speaks up / Looks after them / Our people, the features list leads with the family dashboard and alerts, the pages grid leads with `/care` ("Family dashboard"), and the closing line is "Stay close, from anywhere". The "Care" nav link is now "Family". Layout and animations are unchanged.
+
+**Still open**
+- No seizure / sudden-shaking alert kind yet; the live test used `voice.createAlert` with seizure wording.
+- `FALL_ANSWER_MS` (30 s) is long for a live demo; a demo mode could shorten it.
+- No voicemail handling or call-outcome tracking (Cartesia webhooks).
+
+**Verified:** `tsc`, `eslint`, **174 tests** (new: `lib/phone` targeting and variables; `tests/convex/phone.test.ts`, which covers an urgent alert calling once, a notify alert not calling, a merged urgent alert calling once, and a dry run without Cartesia). The demo-seed test in `tests/convex/backend.test.ts` can exceed its 5 s timeout on a busy machine; it passes with `--testTimeout=30000` and isn't affected by this change.
+
+---
+
+## 2026-10-24: Hub onboarding, 3D band, watch-list research agent and a phone agent skeleton
+
+**`/hub` demo hub** (`components/wearable/hub-demo.tsx`)
+- A spinnable 3D wristband (`band-model.tsx`, three.js via `@react-three/fiber` + `drei`, built in code, no model file) on the landing page's `Sky` backdrop. Drag rotates it. Zoom is off so it never captures page scroll, and vertical swipes still scroll on phones.
+- **Patient onboarding panel** (`patient-onboarding.tsx`): Conditions → Medications → Emergency contacts → Done. It edits the same patient the band simulator talks to, so a new medicine shows on the band's schedule straight away. `HubDemo` owns `useBandPairing` and `useVoiceAgent` and passes them to both the panel and `WearableSimulator` (now props, not internal hooks). Backend: `convex/profile.ts` (public, no auth, like `voice.ts`).
+- The medicine form is now a shared `MedicationEditor` in `components/onboarding/steps/meds-step.tsx`, used by `/start` and `/hub`. `convex/onboarding.ts` exports its validators and `insertMedication`.
+
+**Health background** (`lib/onboarding/health.ts`)
+- `/start` has a **Their health** step (`health-step.tsx`): conditions, allergies, mobility and notes, saved to `patients.health` via `onboarding.updateHealth`. `/hub` writes `health.conditions` too.
+- `patients.emergencyContacts` (name, relationship, phone; up to 5).
+- The voice prompt (`lib/voice/prompt.ts`) includes conditions, allergies, mobility guidance and emergency contacts. If the patient asks who to call, the band names them, and 911 always comes first.
+
+**Watch-list research agent** (`convex/agent.ts`, `convex/watchList.ts`, `lib/watch-list.ts`)
+- Clicking **Finish** in `/hub` onboarding runs `watchList.request`, which schedules `agent.researchWatchList`. Claude Opus 5.5 searches allowlisted medical sites (`web_search_20260209`, up to 8 searches) and returns a short watch list: heart rate, temperature and movement signals, each with a device-checkable threshold, an alert tier and a source URL. Signals whose source isn't on the allowlist are dropped and recorded as gaps.
+- The result is submitted through a `strict` tool (Opus 5.5 rejects forced `tool_choice`; structured outputs can't be combined with web-search citations). The agent resumes `pause_turn`, sends validation errors back for a resubmit, and caps the loop at 6 turns. Server-side `fallbacks: "default"` is on.
+- Stored in the `watchLists` table (one row per patient: researching / ready / failed). `watch-list-card.tsx` shows it live on the onboarding Done step, with **Re-run research**.
+- Needs `ANTHROPIC_API_KEY` set on Convex. A run takes 1–2 minutes.
+
+**Phone agent skeleton** (`lib/phone/*`, `POST /api/phone/call`)
+- Places an outbound call through a Cartesia voice agent (`POST /agents/calls`, `Cartesia-Version: 2026-03-01`), passing `patient_name`, `contact_name`, `reason_line` and `callback_number` as dynamic variables.
+- **All placeholders:** the welcome message, instructions and per-reason lines in `lib/phone/script.ts` are TODO text meant to be pasted into the agent in the Cartesia dashboard. It needs `CARTESIA_PHONE_AGENT_ID` and `CARTESIA_FROM_NUMBER_ID` (see `.env.example`). Without them the route returns 503 naming the missing variable.
+- The route places real calls, so it's gated like the debug routes (`debugEnabled()`).
+
+**Still open**
+- Nothing uses the watch list yet. Next steps: add it to the voice prompt, and have heart rate and temperature readings raise alerts when they cross its thresholds.
+- ~~Nothing places phone calls automatically yet.~~ Done: urgent alerts now call (see the entry above).
+- `convex/profile.ts`, `convex/watchList.ts` and `/api/phone/call` need auth. They don't use Clerk yet.
+
+**Verified:** `tsc`, `eslint` on the touched files, vitest (prompt health and emergency-contact tests, phone request/E.164/variable tests). The watch-list agent was run live once against the demo patient.
+
+---
+
+## 2026-10-24: Text alerts land on main, with per-person notification preferences, daily summary texts and scheduled check-ins
+
+This merges `feat/voice-on-task` (Twilio text alerts, the on-task voice prompt) into main's dose engine, alerts, care dashboard and Clerk work. Where both sides had built the same thing, **main's pages won**: `/care`, `/clinician/[patientId]`, `/settings`, the seed and `raiseAlert`. My versions of `/care` and the clinician report were dropped before merging. The guiding rule for what was added: **configurable without overwhelm**.
+
+**Texting is wired into `raiseAlert`** (`convex/alerts.ts`)
+- Every *new* care-team alert (`isCareAlert`: notify, urgent, and family-facing "ask" like a declined consent) schedules `notify.textAlert`. The band's own spoken prompts (dose reminders, fall check, move nudge, check-ins) are never texted. A merged duplicate urgent alert isn't texted twice. `openAlert` is gone.
+- Dry run without Twilio env vars, as before: texts are logged as `skipped` with the body that would have gone out.
+
+**Notification preferences** (`lib/notify/preferences.ts` + tests, `careTeamMembers.notifications`)
+- Each person picks one of three presets: **Just the important stuff** (default: urgent, heads-ups, daily summary text, quiet 10 PM–7 AM), **Everything**, or **Emergencies only**. The individual switches sit under a folded **Customize**: urgent, heads-ups, "please check in" (owner only), daily summary and its time, quiet hours and their times. The copy is plain language.
+- Every field is optional, so existing rows resolve to the default. Saving also keeps `urgentAlerts` in sync, which the voice prompt reads.
+- `planTexts()` (`lib/notify/plan.ts`) honours them. In someone's quiet hours (patient's time zone), heads-ups are logged `skipped` with "Quiet hours, saved for the daily summary" (`textMessages.heldForSummary`). **Urgent always goes.**
+- Guardrails are warnings, never blocks: a warning in the editor when urgent is off, and a team warning when nobody with a phone would get urgent texts.
+- UI: a **Text notifications** panel on `/settings` (`components/settings/notifications-panel.tsx`) next to main's care team panel, which already toggles the `summary` permission. It shows who's texted, their preset, phone, Change / Send test, "Send today's summary text now", and recent texts (held ones marked). The hub's **Text alerts** card has the same editor. Editing uses `setMemberPhone`'s rule: yourself, or anyone if you're the owner or patient. On `/settings`, main's "manage as the owner" demo switch applies.
+
+**Daily summary text** (`lib/summary/daily.ts` + tests, `convex/summary.ts`, `convex/crons.ts`)
+- This is separate from main's 8 PM Claude summary on `/care` (`summaries.kind: "daily"`). It's a short, rule-based SMS under 300 characters: "Cadence · Margaret, day 16 after knee replacement: took 6/6 medicines, pain 5→3, last check-in: doing well, no warning signs." Heads-ups held in quiet hours are added as a brief line.
+- Stored as `summaries.kind: "daily_sms"` (`model: "rules"`), so it never stands in for, or blocks, the dashboard summary. Sent every 15 minutes to members with the summary text on, the `summary` permission and a phone, at their own time, at most once a day.
+
+**Scheduled check-ins**
+- Cadence by phase (`lib/onboarding/recovery.ts` `checkInsForDay`): first days 3×/day, early 2×, getting stronger 1×, routine every other day, pre-op none. Times are spread over 9 AM–9 PM and moved out of every dose's reminder window (`lib/voice/events.ts` `scheduledCheckInTimes`, tested).
+- The **dose engine** (`convex/doses.ts` `checkScheduledCheckIn`) raises an `ask` prompt of kind `check_in` once per slot, so the hub speaks it like any other prompt. It skips a slot that already had a check-in, and waits while another prompt is pending.
+- `POST /api/voice/nudge` polling (no `event`) also speaks a due scheduled check-in when no dose is due, deduped by a `check_in@<ms>` key. This is additive for firmware, plus an `X-Cadence-Event` header.
+
+**Demo seed:** Sarah and Maria get fictional 555-01xx numbers, so the dry-run log shows texts from the `/demo` simulators. Seeded history doesn't text anyone.
+
+**Verified:** `tsc` (app and `convex/`), `eslint` (no new warnings), **164 tests** (main's suites plus new ones: preferences, plan, summary composer, check-in cadence, and `tests/convex/notify.test.ts`), and `next build` all pass. `tests/convex/notify.test.ts` covers:
+- the permission check;
+- a red-flag check-in at 11:30 PM held for the owner only, with the urgent fall alert texted to both;
+- a dose-reminder prompt not texted;
+- the next evening's summary text, with the held line, sent once and stored as `daily_sms`;
+- the urgent-gap warning;
+- dose-engine check-in prompts at 11:00 and 15:15, skipped after a check-in.
+
+**Not verified:** a live Convex deployment (the sandbox can't download the local backend), so `convex/_generated/api.d.ts` was edited by hand (adds `notify`, `summary`). **Run `npx convex dev` once.** Also not verified: live Twilio, and a check-in spoken by real Claude and Cartesia.
+
+**Open**
+- Waking hours for check-ins are fixed at 9–9.
+- The patient's `/care` view doesn't show notification preferences, only `/settings` and the hub do.
+- No inbound SMS ("I've got it").
+
+---
+
+## 2026-10-24: Clerk sign-in (off until keys are set)
+
+Clerk app `app_3L8w9uL7WMgglgSoAK50VLOntIN` (chosen in the Clerk Dashboard). The Clerk CLI couldn't reach Clerk from the build sandbox, so this is the manual Next.js setup; no keys are committed.
+
+- `lib/clerk.ts`: `clerkEnabled` = `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is set. Everything below is inert without it, so nobody needs an account to run the app.
+- `proxy.ts` (Next 16's middleware): `clerkMiddleware()`; no routes are forced behind sign-in.
+- `app/layout.tsx`: `ClerkProvider` (shadcn theme from `@clerk/ui`) inside `<body>`, plus `ClerkIdentityBridge` (`components/auth/clerk-identity.tsx`).
+- `components/convex-client-provider.tsx`: `ConvexProviderWithClerk` when enabled, so Convex calls carry the Clerk token.
+- `components/onboarding/use-demo-identity.ts`: returns the Clerk user id when signed in; otherwise the old per-browser demo id.
+- `components/auth/auth-controls.tsx`: Sign in / Sign up (modal) or `UserButton`, in the AppShell, onboarding and /hub headers.
+- `convex/auth.config.ts`: trusts tokens from `https://perfect-ewe-2767.clerk.accounts.dev` (hard-coded: Convex refuses to deploy an auth config that reads an unset env var). `convex/identity.ts` `resolveUserId()`: a signed-in caller is `identity.subject` whatever `userId` they send; signed out falls back to the demo id unless `CADENCE_REQUIRE_AUTH=1`. Used by `membership`/`requireManager` (so onboarding, invites, pairing, devices and settings), `createPatient` and invites.
+- `reports.patients`: signed in, lists only your care-team patients plus the demo patient.
+- `tests/convex/identity.test.ts`: spoofing another user's id fails when signed in; demo mode still works.
+
+**Open:** dashboard/report/voice/demo functions still don't check membership or permissions; sign-in isn't verified against a live Clerk app from here (no network to Clerk). Roles per view (patient / care partner / clinician) can now hang off `careTeamMembers.role` for the signed-in user.
+
+---
+
+## 2026-10-24: Dose engine, alerts, care dashboard, clinician report, settings and /demo
+
+Closes the software side of Layer 1 and most of Layer 2 from the design doc (no firmware). Everything works without API keys; Claude-written text falls back to labelled templates.
+
+**Backend (Convex)**
+| Path | What |
+|---|---|
+| `lib/dose-engine.ts` (+ test), `convex/doses.ts`, `convex/crons.ts` | Every-minute engine: dose row at T−window, hub reminder at T and T+15, missed + care alert at T+window (fresh misses only). Lid openings → `opened` / `late` (to T+90) / `extra_opening` within 2 h of a taken dose. Low-activity nudge after 3 still waking hours. Device-offline alert after 15 silent minutes (only devices that have really posted over HTTP). |
+| `lib/alerts.ts`, `convex/alerts.ts` | Alert kinds and tiers. `ask` alerts with a prompt kind are **hub prompts** (`pendingPrompts`, `markDelivered`); notify/urgent go to `/care` (`forCare`, `acknowledge`). Urgent alerts within 2 min are merged (device + agent both raising one). |
+| `convex/safety.ts` | Fall → event + spoken "are you okay?" + 30 s timer → urgent `fall_unanswered`. `imOkay`, `needHelp`, `pending`. A calm voice check-in with trigger `fall` also cancels. SOS → urgent immediately. |
+| `convex/http.ts`, `convex/devices.ts` | `/device/activity`, `/device/event`, `/device/heartbeat` with bearer auth against `devices.tokenHash` (SHA-256). Heartbeat returns `{led, buzz}`. Devices registered in /settings. |
+| `lib/reports/stats.ts` (+ test), `convex/reports.ts` | Adherence, pain (incl. by hours since last dose), activity, events, check-in states, and **patterns computed in code**, each with evidence row ids. Queries `care`, `clinician`, `patients`. |
+| `lib/reports/summaries.ts`, `convex/ai.ts` | Claude (`claude-sonnet-5-5`) daily summary (8 PM local via hourly cron, or on demand) and clinician report. zod structured output, invented citations dropped, advice-like wording rejected, template fallback (`model: "template"`). All prompts/responses in `aiLogs`. |
+| `lib/demo-history.ts`, `convex/seed.ts` | Demo Margaret is now day 16 after a knee replacement with **14 days of simulated history** (`patients.isDemo`), incl. missed 2 PM doses, late doses, an extra opening, a fall she was fine after, a red-flag wound check-in, pain falling 7→3, steps rising. |
+| `convex/demo.ts` | Simulators via the same code paths as the device routes; `resetDemo` deletes demo patients only. |
+| `convex/settings.ts` | `overview`, `updateMedication`, `setPermissions`, `revokeMember` (owner/patient only). |
+| `convex/voice.ts` | Uses `raiseAlert` (with kinds); `confirmDose` closes reminders and a missed alert; two "struggling" check-ins in a row → notify; `getContext` adds `recentCheckIns` (7 days) as agent **memory** (stand-in for Moss). |
+
+**Schema (additive, all optional):** `patients.isDemo`; `doseEvents.remindersSent/lastRemindedAt`; `alerts.kind/refId/deliveredAt` + index `by_patient_created`; `summaries.sections`; `devices.label` + indexes `by_tokenHash`, `by_patient`; new table `aiLogs`.
+
+**Pages**
+- `/hub`: speaks server prompts automatically (`use-hub-prompts.ts`; reminders, "did you take them?" after a lid opening, fall check, SOS, move nudge); big clock / next dose / captions / Yes-No card; "Are you okay?" countdown with I'm okay / I need help. The old 30 s due-dose polling is now an opt-in fallback in Debug tools. New wearable events `lid_opened`, `extra_opening`; `/api/voice/nudge` takes `logged: true` so server-logged falls aren't double-logged.
+- `/care`: alerts first with one-tap acknowledge, today's doses and timeline, activity charts, week adherence, daily summary (+ "write now"), care team, browser notification + chime for new alerts.
+- `/clinician/[patientId]`: date range, adherence, pain over time and by hours since dose, steps/HR, events, patterns (code), Claude observations with evidence chips → evidence table, print/PDF, **FHIR R4 export** (`lib/fhir.ts`).
+- `/settings`: medicines (edit times/window), care team permissions/revoke/invites, device registration (token shown once, only hash stored).
+- `/demo`: every flow with hardware unplugged, live feed, pending hub prompts, fall countdown, reset.
+- Shared: `components/app/` (`AppShell` with nav + patient picker + **simulated-data banner**, `useSelectedPatient`, `useNow`).
+
+**Tests:** `tests/convex/*` run Convex functions against `convex-test` (reminders → missed alert → acknowledge, lid → confirm → extra opening, fall timer/cancel, SOS dedup, struggling twice, HTTP auth + LED, offline, seed + reports + template summaries, reset). 104 tests, `tsc`, `eslint`, `next build` pass.
+
+**Gotchas / open**
+- Not verified against a live Convex deployment (unreachable from the build sandbox) — `convex/_generated/api.d.ts` was regenerated by hand. Run `npx convex dev` once; it will regenerate it and push the crons.
+- **Deploy:** run `npx convex deploy` (new tables, indexes, crons). Existing seeded Margaret keeps her old 3-day history; press **Reset demo data** on /demo.
+- Hub reminders need `/hub` open (it's the band's stand-in). Two open `/hub` tabs on the same patient will both speak.
+- No auth (patient picker per browser; `/settings` has a demo "Manage as the owner" switch). No SMS here — see `feat/voice-on-task` (Twilio); when it lands, route `raiseAlert` notify/urgent through its `openAlert` texting.
 
 ---
 
@@ -327,8 +495,9 @@ Response `200 audio/wav` with headers `X-Cadence-Transcript`, `X-Cadence-Reply`,
 ```
 - With `event`: always speaks (fall follow-up, scheduled check-in, forced reminder).
 - Without `event` (polling): speaks only if a dose is currently due **and** its `X-Cadence-Nudge-Key` differs from `lastNudgeKey`; otherwise `204`. The device should store the returned key so it doesn't repeat the reminder.
+- *(2026-10-24, additive)* When polling and no dose is due, it may instead speak a **scheduled check-in** (phase-based cadence, see the 2026-10-24 Tier 1 entry). Same rules: its key looks like `check_in@<ms>`, and sending it back as `lastNudgeKey` suppresses a repeat. A due dose always wins. Responses also carry `X-Cadence-Event` (`dose_due`, `check_in`, …), which devices may ignore.
 
-Response `200 audio/wav` + `X-Cadence-Reply`, `X-Cadence-Actions`, `X-Cadence-Nudge-Key`, or `204`.
+Response `200 audio/wav` + `X-Cadence-Reply`, `X-Cadence-Actions`, `X-Cadence-Nudge-Key`, `X-Cadence-Event`, or `204`.
 
 **`GET /api/voice/patient?patientId=`**: patient and today's dose slots as JSON (simulator display). Defaults to the first patient.
 

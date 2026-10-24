@@ -3,20 +3,13 @@
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { AuthControls } from "@/components/auth/auth-controls";
 import { Wordmark } from "@/components/landing/wordmark";
 
 // Form primitives for onboarding, in the landing page's lilac/plum language:
 // display-serif headlines, mono labels, glass pill buttons.
 
-interface OnboardingShellProps {
-  aside?: ReactNode;
-  children: ReactNode;
-  label?: string;
-  /** Use the full width instead of leaving a column for `aside` (the simulator). */
-  wide?: boolean;
-}
-
-export function OnboardingShell({ aside, children, label = "Setup", wide = false }: OnboardingShellProps) {
+export function OnboardingShell({ aside, children, label = "Setup" }: { aside?: ReactNode; children: ReactNode; label?: string }) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-lilac text-plum">
       {/* soft dusk clouds, echoing the landing sky */}
@@ -30,17 +23,16 @@ export function OnboardingShell({ aside, children, label = "Setup", wide = false
         <Link href="/" aria-label="Cadence home" className="text-3xl">
           <Wordmark />
         </Link>
-        <span className="mono-label text-plum-muted">{label}</span>
+        <div className="flex items-center gap-3">
+          <span className="mono-label text-plum-muted">{label}</span>
+          <AuthControls />
+        </div>
       </header>
 
-      {wide ? (
-        <main className="relative mx-auto max-w-6xl px-5 pb-24 md:px-10 md:pt-6">{children}</main>
-      ) : (
-        <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-24 md:grid-cols-[220px_1fr] md:px-10 md:pt-6">
-          {aside ? <aside>{aside}</aside> : <div />}
-          <main>{children}</main>
-        </div>
-      )}
+      <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-24 md:grid-cols-[220px_1fr] md:px-10 md:pt-6">
+        {aside ? <aside>{aside}</aside> : <div />}
+        <main>{children}</main>
+      </div>
     </div>
   );
 }
@@ -114,6 +106,42 @@ export function Select({ className = "", ...props }: SelectHTMLAttributes<HTMLSe
       <select {...props} className={`${control} h-12 cursor-pointer appearance-none pr-11`} />
       <ChevronDown aria-hidden className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-plum-muted" />
     </div>
+  );
+}
+
+/** A selectable card (procedure, role, relationship). */
+export function ChoiceCard({
+  selected,
+  onSelect,
+  title,
+  body,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  body?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={`rounded-2xl border px-4 py-3 text-left transition-all duration-300 focus-visible:ring-2 focus-visible:ring-violet/40 outline-none ${
+        selected
+          ? "border-violet bg-white/85 shadow-[0_10px_30px_-14px_rgb(113_20_255/0.55)]"
+          : "border-plum/10 bg-white/40 hover:border-plum/30 hover:bg-white/60"
+      }`}
+    >
+      <span className="flex items-center gap-2 font-display text-xl">
+        <span
+          aria-hidden
+          className={`inline-block size-2 rounded-full transition-colors ${selected ? "bg-violet" : "bg-plum/20"}`}
+        />
+        {title}
+      </span>
+      {body && <span className="mt-1 block text-sm text-plum-muted">{body}</span>}
+    </button>
   );
 }
 

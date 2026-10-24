@@ -4,10 +4,12 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { healthSummary } from "@/lib/onboarding/health";
 import { localDateKey, recoveryStatus } from "@/lib/onboarding/recovery";
 import { nextStep, prevStep, STEPS, useSetupProgress, type SetupDraft, type StepId } from "./setup-state";
 import { BandStep } from "./steps/band-step";
 import { DoneStep } from "./steps/done-step";
+import { HealthStep } from "./steps/health-step";
 import { MedsStep } from "./steps/meds-step";
 import { PatientStep, RecoveryStep, YouStep } from "./steps/profile-steps";
 import { TeamStep } from "./steps/team-step";
@@ -15,7 +17,7 @@ import { OnboardingShell, StepRail, errorText } from "./ui";
 import { useDemoIdentity } from "./use-demo-identity";
 
 /** Steps that need the patient to exist in Convex first. */
-const NEEDS_PATIENT: StepId[] = ["meds", "band", "team", "done"];
+const NEEDS_PATIENT: StepId[] = ["health", "meds", "band", "team", "done"];
 
 function patientArgs(draft: SetupDraft) {
   return {
@@ -37,7 +39,7 @@ function patientArgs(draft: SetupDraft) {
   };
 }
 
-/** Family-led setup: you → patient → recovery → meds → band → team → done. */
+/** Family-led setup: you → patient → recovery → health → meds → band → team → done. */
 export function SetupWizard() {
   const { identity } = useDemoIdentity();
   const progress = useSetupProgress();
@@ -110,6 +112,17 @@ export function SetupWizard() {
     if (!setup || !identity) return <p className="mono-label text-plum-muted">Loading…</p>;
     const pid = setup.patient._id;
     switch (step) {
+      case "health":
+        return (
+          <HealthStep
+            userId={identity.id}
+            patientId={pid}
+            patientName={patientName}
+            health={setup.patient.health}
+            onNext={next}
+            onBack={back}
+          />
+        );
       case "meds":
         return (
           <MedsStep
@@ -150,6 +163,7 @@ export function SetupWizard() {
           <DoneStep
             patientName={patientName}
             recoveryLabel={r ? recoveryStatus(r.surgeryDate, localDateKey(setup.patient.timeZone, now)).label : null}
+            healthLabel={healthSummary(setup.patient.health)}
             medicationCount={setup.medications.length}
             paired={setup.devices.length > 0}
             teamCount={setup.members.length + setup.pendingInvites.length}

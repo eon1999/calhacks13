@@ -5,9 +5,11 @@ import { runAgentTurn } from "@/lib/voice/agent";
 import { synthesize } from "@/lib/voice/cartesia";
 import { loadPatientContext } from "@/lib/voice/context";
 import { convex } from "@/lib/voice/convex";
-import { dueSlots, isSafetyEvent, nudgeKey, wearableEvent } from "@/lib/voice/events";
+import { localDateKey, recoveryStatus } from "@/lib/onboarding/recovery";
+import { dueScheduledCheckIn, dueSlots, isSafetyEvent, nudgeKey, wearableEvent } from "@/lib/voice/events";
 import {
   HEADER_ACTIONS,
+  HEADER_EVENT,
   HEADER_NUDGE_KEY,
   HEADER_REPLY,
   audioResponse,
@@ -24,17 +26,22 @@ export const maxDuration = 60;
 const body = z.object({
   patientId: patientIdSchema,
   sessionId: sessionIdSchema,
-  // Omit to let the server decide (polling): speaks only if a dose is due.
+  // Omit to let the server decide (polling): a due dose, else a scheduled check-in.
   event: wearableEvent.optional(),
   // Nudge key the device already played; suppresses repeats while still due.
   lastNudgeKey: z.string().max(2000).optional(),
+  // True when the server already logged this event (a prompt from the dose
+  // engine or a device route), so a fall/SOS isn't recorded twice.
+  logged: z.boolean().optional(),
 });
 
 /**
  * Agent speaks first: dose reminders, scheduled check-ins, fall follow-ups.
  *
- * JSON body: { patientId, sessionId, event?, lastNudgeKey? }
+ * JSON body: { patientId, sessionId, event?, lastNudgeKey?, logged? }
  * Responds 204 when there is nothing to say, else audio/wav + X-Cadence-* headers.
+ * When polling (no event), a due dose wins; otherwise a phase-based scheduled
+ * check-in (lib/voice/events.ts) may speak. Both dedupe through the nudge key.
  */
 export async function POST(request: Request): Promise<Response> {
   try {
@@ -46,17 +53,33 @@ export async function POST(request: Request): Promise<Response> {
     let event = parsed.data.event;
     let key = "";
     if (!event) {
-      const ctx = await loadPatientContext(patientId, Date.now());
+      const now = Date.now();
+      const ctx = await loadPatientContext(patientId, now);
       if (!ctx) return jsonError(404, "Patient not found");
       const due = dueSlots(ctx.slots);
-      key = nudgeKey(due);
-      if (due.length === 0 || key === lastNudgeKey) return new Response(null, { status: 204 });
-      event = "dose_due";
+      if (due.length > 0) {
+        // Never start a check-in over a due dose, even one the band already reminded.
+        key = nudgeKey(due);
+        if (key === lastNudgeKey) return new Response(null, { status: 204 });
+        event = "dose_due";
+      } else {
+        const { recovery, timeZone } = ctx.patient;
+        const checkIn = dueScheduledCheckIn({
+          recovery: recovery ? recoveryStatus(recovery.surgeryDate, localDateKey(timeZone, now)) : null,
+          doses: ctx.doseTimes,
+          checkInTimes: ctx.checkInsToday.map((c) => c.at),
+          timeZone,
+          now,
+        });
+        if (!checkIn || checkIn.key === lastNudgeKey) return new Response(null, { status: 204 });
+        key = checkIn.key;
+        event = "check_in";
+      }
     }
 
     // Record falls/SOS before involving the agent, so they're logged even if
     // Claude or TTS fails.
-    if (isSafetyEvent(event)) {
+    if (isSafetyEvent(event) && !parsed.data.logged) {
       await convex().mutation(api.voice.logDeviceEvent, { patientId, type: event });
     }
 
@@ -74,6 +97,7 @@ export async function POST(request: Request): Promise<Response> {
         [HEADER_REPLY]: reply,
         [HEADER_ACTIONS]: actions.join(","),
         [HEADER_NUDGE_KEY]: key,
+        [HEADER_EVENT]: event,
       },
       timings,
     );

@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useContext, useEffect, useSyncExternalStore } from "react";
+import { ClerkUserIdContext } from "@/components/auth/clerk-identity";
 
-// Stand-in for Clerk until keys exist: a per-browser id kept in localStorage.
+// The signed-in Clerk user when there is one; otherwise a per-browser demo id
+// kept in localStorage, so the demo works without an account.
 // "Continue as someone new" (trying an invite on the same browser) sets a
 // tab-only override in sessionStorage, so the owner's other tabs stay signed in.
-// TODO(auth): replace with Clerk's useUser(); Convex functions then read
-// ctx.auth instead of taking a userId argument.
+// Convex resolves the caller from ctx.auth when signed in (convex/identity.ts),
+// so the id passed here only matters for signed-out demo use.
 
 export const DEMO_USER_KEY = "cadence.demoUser";
 const listeners = new Set<() => void>();
@@ -55,6 +57,7 @@ function newId(): string {
 
 /** The current demo user, created on first use. `null` during SSR. */
 export function useDemoIdentity(): { identity: DemoIdentity | null; startFresh: () => void } {
+  const clerkUserId = useContext(ClerkUserIdContext);
   const raw = useSyncExternalStore(subscribe, snapshot, () => null);
   useEffect(() => {
     if (snapshot()) return;
@@ -67,5 +70,6 @@ export function useDemoIdentity(): { identity: DemoIdentity | null; startFresh: 
     set(() => sessionStorage, memory.tab);
     notify();
   }, []);
+  if (clerkUserId) return { identity: { id: clerkUserId }, startFresh };
   return { identity: raw ? { id: raw } : null, startFresh };
 }

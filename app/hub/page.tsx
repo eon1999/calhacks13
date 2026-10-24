@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { Suspense } from "react";
+import { AuthControls } from "@/components/auth/auth-controls";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
-import { OnboardingShell } from "@/components/onboarding/ui";
-import { WearableSimulator, type SimulatorMode } from "@/components/wearable/wearable-simulator";
+import { Sky } from "@/components/landing/sky";
+import { HubDemo } from "@/components/wearable/hub-demo";
+import type { SimulatorMode } from "@/components/wearable/wearable-simulator";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -11,61 +12,31 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 // default; ?demo=1 is the judge-facing view (no debug tools).
 export default function HubPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    // searchParams is request data, so it's read inside Suspense (Next 16 prerendering).
-    <Suspense fallback={<OnboardingShell label="Band" wide>{null}</OnboardingShell>}>
-      <Hub searchParams={searchParams} />
-    </Suspense>
+    <main className="relative min-h-svh bg-[#4a12a3]">
+      {/* Same dusk backdrop as the landing hero, pinned behind the page. */}
+      <div className="fixed inset-0">
+        <Sky />
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#2a0f5c]/70 via-[#2a0f5c]/25 to-transparent" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-6xl px-5 py-10 md:px-10">
+        <div className="mb-4 flex justify-end">
+          <AuthControls tone="dark" />
+        </div>
+        {/* searchParams is request data, so it's read inside Suspense (Next 16 prerendering). */}
+        <Suspense fallback={null}>
+          <Hub searchParams={searchParams} />
+        </Suspense>
+      </div>
+    </main>
   );
 }
-
-const navLink = "mono-label rounded-full px-3 py-2 text-plum-muted transition-colors hover:text-violet";
 
 async function Hub({ searchParams }: { searchParams: SearchParams }) {
   const mode: SimulatorMode = (await searchParams).demo ? "demo" : "debug";
   return (
-    <OnboardingShell label={mode === "demo" ? "Band" : "Simulator"} wide>
-      <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <span className="tag-pill">▸ {mode === "demo" ? "Demo" : "Debug tools on"}</span>
-          <h1 className="display mt-5 text-[clamp(2.4rem,5vw,4.25rem)]">
-            {mode === "demo" ? (
-              <>
-                <em>The</em> Cadence band
-              </>
-            ) : (
-              <>
-                <em>Wearable</em> simulator
-              </>
-            )}
-          </h1>
-          <p className="mt-4 max-w-[52ch] text-base text-plum-muted">
-            {mode === "demo"
-              ? "Talk to it like the person wearing it would. When something sounds wrong, the family gets a text."
-              : "A browser stand-in for the wristband. It calls the same endpoints the firmware will."}
-          </p>
-        </div>
-        <nav className="flex gap-1">
-          {mode === "demo" ? (
-            <>
-              <Link href="/demo" className={navLink}>
-                ← Demo guide
-              </Link>
-              <Link href="/hub" className={navLink}>
-                Debug tools
-              </Link>
-            </>
-          ) : (
-            <Link href="/hub?demo=1" className={navLink}>
-              Demo view →
-            </Link>
-          )}
-        </nav>
-      </div>
-      <div className="cadence-theme">
-        <ConvexClientProvider>
-          <WearableSimulator mode={mode} />
-        </ConvexClientProvider>
-      </div>
-    </OnboardingShell>
+    <ConvexClientProvider>
+      <HubDemo mode={mode} />
+    </ConvexClientProvider>
   );
 }

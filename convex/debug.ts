@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { localDayBounds } from "../lib/schedule";
-import { openAlert } from "./notify";
+import { raiseAlert as insertAlert } from "./alerts";
 import { optionalPhone } from "./onboarding";
 
 // Tester tooling for the /hub debug panel. Reached only through the
@@ -68,7 +68,8 @@ export const raiseAlert = mutation({
     if (!(await ctx.db.get(patientId))) throw new Error("Patient not found");
     const clean = reason.trim().slice(0, 300);
     if (!clean) throw new Error("Say what the alert is about");
-    return await openAlert(ctx, { patientId, tier, reason: clean });
+    // "voice_agent": what the agent's own alert_care_team raises, so it's texted like a real one.
+    return await insertAlert(ctx, { patientId, tier, kind: "voice_agent", reason: clean });
   },
 });
 

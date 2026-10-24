@@ -15,7 +15,8 @@ export function DayTimeline() {
         A day <em>with</em> Cadence
       </h2>
       <p data-fade className="mono-label mt-6 max-w-[40ch]">
-        What the wristband actually does between waking up and lights out. Hover a moment to see it land.
+        What Mom&apos;s day looks like, and how much of it reaches you, from waking up to lights out. Hover a moment to
+        see it land.
       </p>
       <span data-fade className="tag-pill mt-5">
         ▸ Total: {TOTAL} moments

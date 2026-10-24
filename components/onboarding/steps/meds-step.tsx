@@ -75,6 +75,48 @@ interface MedsStepProps {
 export function MedsStep({ userId, patientId, patientName, medications, onNext, onBack }: MedsStepProps) {
   const addMedication = useMutation(api.onboarding.addMedication);
   const removeMedication = useMutation(api.onboarding.removeMedication);
+
+  return (
+    <div>
+      <StepHeading
+        kicker="Medicines"
+        sub={`The band reminds ${patientName} out loud when each dose is due, and lets the care team know if one is missed. Snap the pharmacy label, or type it in.`}
+      >
+        <em>What</em> do they
+        <br />
+        take, and when?
+      </StepHeading>
+
+      <MedicationEditor
+        medications={medications}
+        listLabel="Their schedule"
+        onAdd={(med) => addMedication({ userId, patientId, ...med })}
+        onRemove={(medicationId) => removeMedication({ userId, medicationId })}
+      />
+
+      <StepActions>
+        <TextButton type="button" onClick={onBack}>
+          ← Back
+        </TextButton>
+        <PrimaryButton type="button" onClick={onNext}>
+          {medications.length ? "Continue" : "Skip for now"}
+        </PrimaryButton>
+      </StepActions>
+    </div>
+  );
+}
+
+interface MedicationEditorProps {
+  medications: Doc<"medications">[];
+  listLabel: string;
+  onAdd: (med: MedForm) => Promise<unknown>;
+  onRemove: (medicationId: Id<"medications">) => Promise<unknown>;
+  /** Force one column (form above the list), for narrow containers. */
+  stacked?: boolean;
+}
+
+/** Add-a-medicine form (with label scan) beside the current schedule. Used by setup and the /hub profile editor. */
+export function MedicationEditor({ medications, listLabel, onAdd, onRemove, stacked = false }: MedicationEditorProps) {
   const [form, setForm] = useState<MedForm>(EMPTY_FORM);
   const [newTime, setNewTime] = useState("12:00");
   const [scanNote, setScanNote] = useState<string | null>(null);
@@ -122,7 +164,7 @@ export function MedsStep({ userId, patientId, patientName, medications, onNext, 
     setSaving(true);
     setError(null);
     try {
-      await addMedication({ userId, patientId, ...form });
+      await onAdd(form);
       setForm(EMPTY_FORM);
       setScanNote(null);
     } catch (err: unknown) {
@@ -139,16 +181,7 @@ export function MedsStep({ userId, patientId, patientName, medications, onNext, 
 
   return (
     <div>
-      <StepHeading
-        kicker="Medicines"
-        sub={`The band reminds ${patientName} out loud when each dose is due, and lets the care team know if one is missed. Snap the pharmacy label, or type it in.`}
-      >
-        <em>What</em> do they
-        <br />
-        take, and when?
-      </StepHeading>
-
-      <div className="grid max-w-4xl gap-10 xl:grid-cols-[1fr_300px]">
+      <div className={`grid max-w-4xl gap-10 ${stacked ? "" : "xl:grid-cols-[1fr_300px]"}`}>
         <form onSubmit={(e) => void add(e)} className="space-y-6 rounded-3xl border border-plum/10 bg-white/45 p-6 backdrop-blur-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-display text-2xl">Add a medicine</p>
@@ -251,7 +284,7 @@ export function MedsStep({ userId, patientId, patientName, medications, onNext, 
         </form>
 
         <div>
-          <p className="mono-label text-plum-muted">Their schedule</p>
+          <p className="mono-label text-plum-muted">{listLabel}</p>
           {medications.length === 0 ? (
             <p className="mt-4 text-sm text-plum-muted">Nothing yet. Painkillers, antibiotics and blood thinners are the usual ones after surgery.</p>
           ) : (
@@ -266,7 +299,7 @@ export function MedsStep({ userId, patientId, patientName, medications, onNext, 
                     <button
                       type="button"
                       aria-label={`Remove ${m.name}`}
-                      onClick={() => void removeMedication({ userId, medicationId: m._id })}
+                      onClick={() => void onRemove(m._id)}
                       className="rounded-full p-1 text-plum-muted transition-colors hover:bg-plum/5 hover:text-destructive"
                     >
                       <X className="size-4" />
@@ -279,15 +312,6 @@ export function MedsStep({ userId, patientId, patientName, medications, onNext, 
           )}
         </div>
       </div>
-
-      <StepActions>
-        <TextButton type="button" onClick={onBack}>
-          ← Back
-        </TextButton>
-        <PrimaryButton type="button" onClick={onNext}>
-          {medications.length ? "Continue" : "Skip for now"}
-        </PrimaryButton>
-      </StepActions>
     </div>
   );
 }

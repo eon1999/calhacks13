@@ -8,6 +8,8 @@ const careRole = v.union(
   v.literal("patient"),
 );
 
+const quietHours = v.object({ start: v.string(), end: v.string() }); // "HH:mm", patient's time zone
+
 // All timestamps are UTC milliseconds.
 export default defineSchema({
   patients: defineTable({
@@ -27,6 +29,27 @@ export default defineSchema({
         careNotes: v.optional(v.string()), // e.g. "no lifting over 10 lb"
       }),
     ),
+    health: v.optional(
+      v.object({
+        conditions: v.array(v.string()), // other conditions besides the surgery
+        allergies: v.array(v.string()),
+        noKnownAllergies: v.optional(v.boolean()),
+        mobility: v.optional(v.string()), // MobilityId in lib/onboarding/health.ts
+        notes: v.optional(v.string()),
+      }),
+    ),
+    // People to call in an emergency; not necessarily on the care team.
+    emergencyContacts: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          relationship: v.optional(v.string()),
+          phone: v.string(),
+        }),
+      ),
+    ),
+    // Set on the seeded demo patient so every screen can label its data as simulated.
+    isDemo: v.optional(v.boolean()),
     // Spoken agreement on the band's first boot.
     consent: v.optional(
       v.object({
@@ -51,6 +74,18 @@ export default defineSchema({
     isOwner: v.optional(v.boolean()),
     urgentAlerts: v.optional(v.boolean()),
     phone: v.optional(v.string()), // E.164; alerts are texted here (convex/notify.ts)
+    // What they want texts about. Unset fields fall back to the defaults in
+    // lib/notify/preferences.ts ("Just the important stuff").
+    notifications: v.optional(
+      v.object({
+        urgent: v.optional(v.boolean()),
+        headsUps: v.optional(v.boolean()),
+        askAlerts: v.optional(v.boolean()),
+        dailySummary: v.optional(v.boolean()),
+        summaryTime: v.optional(v.string()), // "HH:mm", patient's time zone
+        quietHours: v.optional(v.union(v.null(), quietHours)), // null = off
+      }),
+    ),
     joinedAt: v.optional(v.number()),
   })
     .index("by_patient", ["patientId"])
@@ -110,6 +145,9 @@ export default defineSchema({
     source: v.optional(
       v.union(v.literal("pillbox"), v.literal("voice"), v.literal("manual")),
     ),
+    // Dose engine bookkeeping (convex/doses.ts): reminders at T and T+15.
+    remindersSent: v.optional(v.number()),
+    lastRemindedAt: v.optional(v.number()),
   }).index("by_patient_time", ["patientId", "scheduledFor"]),
 
   // Wristband movement per window; long quiet stretches prompt a gentle nudge to move.
@@ -175,12 +213,21 @@ export default defineSchema({
     ),
     acknowledgedBy: v.optional(v.string()),
     acknowledgedAt: v.optional(v.number()),
-  }).index("by_patient_status", ["patientId", "status"]),
+    // What raised it (AlertKind in lib/alerts.ts) and the row it's about.
+    // "ask"-tier alerts with a kind are prompts for the patient's band/hub to speak.
+    kind: v.optional(v.string()),
+    refId: v.optional(v.string()),
+    deliveredAt: v.optional(v.number()), // when the hub/band spoke an "ask" prompt
+  })
+    .index("by_patient_status", ["patientId", "status"])
+    .index("by_patient_created", ["patientId", "createdAt"]),
 
-  // Every text Cadence sent, tried, or deliberately held back for an alert.
+  // Every text Cadence sent, tried, or deliberately held back: alerts, daily summaries and tests.
   textMessages: defineTable({
     patientId: v.id("patients"),
-    alertId: v.optional(v.id("alerts")), // unset for "Send test"
+    alertId: v.optional(v.id("alerts")), // unset for summaries and "Send test"
+    summaryId: v.optional(v.id("summaries")), // set for daily summary texts
+    heldForSummary: v.optional(v.boolean()), // held for quiet hours; folded into the next summary
     memberId: v.optional(v.id("careTeamMembers")),
     to: v.string(), // E.164
     body: v.string(),
@@ -190,16 +237,46 @@ export default defineSchema({
     at: v.number(),
   }).index("by_patient_time", ["patientId", "at"]),
 
+  // Urgent-alert phone calls from the Cartesia phone agent (convex/phone.ts).
+  phoneCalls: defineTable({
+    patientId: v.id("patients"),
+    alertId: v.id("alerts"),
+    memberId: v.optional(v.id("careTeamMembers")), // set when calling a care team member, not an emergency contact
+    name: v.string(),
+    to: v.string(), // E.164
+    problem: v.string(), // the alert reason the agent reads out
+    status: v.union(v.literal("placed"), v.literal("failed"), v.literal("skipped")),
+    reason: v.optional(v.string()), // why it failed or was skipped
+    agentCallId: v.optional(v.string()), // Cartesia call id
+    at: v.number(),
+  }).index("by_patient_time", ["patientId", "at"]),
+
   summaries: defineTable({
     patientId: v.id("patients"),
-    kind: v.union(v.literal("daily"), v.literal("clinician")),
+    // "daily_sms" is the short rule-based text (convex/summary.ts), kept apart
+    // from the dashboard's "daily" summary so it never stands in for it.
+    kind: v.union(v.literal("daily"), v.literal("clinician"), v.literal("daily_sms")),
     periodStart: v.number(),
     periodEnd: v.number(),
     body: v.string(), // markdown
     evidenceIds: v.array(v.string()),
-    model: v.string(),
+    model: v.string(), // Claude model id, or "template" when Claude wasn't available
     createdAt: v.number(),
+    // Structured report (ReportSections in lib/reports/types.ts) for the clinician page.
+    sections: v.optional(v.any()),
   }).index("by_patient_kind", ["patientId", "kind"]),
+
+  // Every Claude prompt and response from report/summary jobs, for review before judging.
+  aiLogs: defineTable({
+    patientId: v.id("patients"),
+    job: v.string(),
+    model: v.string(),
+    prompt: v.string(),
+    response: v.string(),
+    ok: v.boolean(),
+    error: v.optional(v.string()),
+    at: v.number(),
+  }).index("by_patient", ["patientId", "at"]),
 
   // Voice agent conversation memory. One sessionId per wearable conversation.
   // "event" turns are things the wearable reported (dose due, check-in timer),
@@ -213,6 +290,18 @@ export default defineSchema({
     at: v.number(),
   }).index("by_session", ["sessionId", "at"]),
 
+  // What the band should watch for (heart rate, temperature, movement), researched
+  // by convex/agent.ts. `result` matches watchListSchema in lib/watch-list.ts.
+  watchLists: defineTable({
+    patientId: v.id("patients"),
+    status: v.union(v.literal("researching"), v.literal("ready"), v.literal("failed")),
+    requestedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    result: v.optional(v.any()),
+    model: v.optional(v.string()),
+    error: v.optional(v.string()),
+  }).index("by_patient", ["patientId"]),
+
   devices: defineTable({
     patientId: v.id("patients"),
     kind: v.union(v.literal("wristband"), v.literal("med_station")),
@@ -220,5 +309,9 @@ export default defineSchema({
     tokenHash: v.string(),
     lastSeenAt: v.optional(v.number()),
     firmwareVersion: v.optional(v.string()),
-  }).index("by_deviceId", ["deviceId"]),
+    label: v.optional(v.string()),
+  })
+    .index("by_deviceId", ["deviceId"])
+    .index("by_tokenHash", ["tokenHash"])
+    .index("by_patient", ["patientId"]),
 });

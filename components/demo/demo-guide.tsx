@@ -87,7 +87,7 @@ export function DemoGuide() {
   const setUp = !!setup && saved?.step === "done";
   const paired = !!setup && setup.devices.length > 0;
   const me = overview?.recipients.find((r) => r.isMe);
-  const lastAlertText = overview?.recent.find((t) => !t.test && t.status !== "skipped");
+  const lastAlertText = overview?.recent.find((t) => t.kind === "alert" && t.status !== "skipped");
   const texted = lastAlertText?.status === "sent";
 
   const status = (done: boolean, ready: boolean): Status => (done ? "done" : ready ? "now" : "todo");

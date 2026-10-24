@@ -79,7 +79,8 @@ export function Surfaces() {
         <span className="col-span-2 pl-[18%]">surfaces</span>
       </div>
       <p data-fade className="mono-label mt-6 max-w-[40ch]">
-        One wristband, four ways in: for the person wearing it, the people who love them, and the team who treats them.
+        One wristband, and a window in for everyone who cares: the family first, then the person wearing it and the team
+        who treats them.
       </p>
 
       <div className="mt-16 grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">

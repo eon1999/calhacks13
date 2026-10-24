@@ -7,15 +7,17 @@ import { StepHeading, TextButton } from "../ui";
 interface DoneStepProps {
   patientName: string;
   recoveryLabel: string | null;
+  healthLabel: string;
   medicationCount: number;
   paired: boolean;
   teamCount: number;
-  onEdit: (step: "meds" | "band" | "team") => void;
+  onEdit: (step: "health" | "meds" | "band" | "team") => void;
 }
 
-export function DoneStep({ patientName, recoveryLabel, medicationCount, paired, teamCount, onEdit }: DoneStepProps) {
+export function DoneStep({ patientName, recoveryLabel, healthLabel, medicationCount, paired, teamCount, onEdit }: DoneStepProps) {
   const rows = [
     { label: "Recovery", value: recoveryLabel ?? "Not set", step: null },
+    { label: "Health", value: healthLabel, step: "health" as const },
     {
       label: "Medicines",
       value: medicationCount ? `${medicationCount} on the schedule` : "None yet",
@@ -54,7 +56,7 @@ export function DoneStep({ patientName, recoveryLabel, medicationCount, paired, 
 
       <div className="mt-12 flex flex-wrap items-center gap-4">
         <GlassButton href="/hub?demo=1">Put the band on {patientName}</GlassButton>
-        <Link href="/demo" className="mono-label text-plum-muted hover:text-violet">
+        <Link href="/try" className="mono-label text-plum-muted hover:text-violet">
           Back to the demo guide
         </Link>
       </div>
