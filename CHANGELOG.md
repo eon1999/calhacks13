@@ -5,6 +5,16 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Branch previews build on Vercel
+
+Preview builds failed at `npx convex deploy` because `CONVEX_DEPLOY_KEY` is set for Production only. `vercel.json` now sets the build command: production still runs `convex deploy --cmd 'npm run build'`, and every other environment runs plain `npm run build`. `vercel.json` overrides the dashboard's Build Command.
+- **Previews use the production Convex backend.** They need `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` enabled for Preview in Vercel.
+- A preview runs against production data and production's deployed Convex functions. Anything on the branch that changes `convex/` won't work in the preview until it's merged and deployed.
+- `ANTHROPIC_API_KEY`, `CARTESIA_API_KEY` and `CADENCE_DEBUG` are still Production-only in Vercel, so a preview's voice and debug routes report them missing.
+- Preview URLs sit behind Vercel's login, so install the PWA on a phone from production (`calhacks13.vercel.app`).
+
+---
+
 ## 2026-10-24: Cadence installs as a phone app (PWA)
 
 The band is getting less capable, so the phone takes over voice and display. `/hub` already does that job, so Cadence is now installable from the browser ("Add to Home Screen"). No Apple developer account or app store is needed, on iPhone or Android.
