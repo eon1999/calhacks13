@@ -277,8 +277,9 @@ Response `200 audio/wav` with headers `X-Cadence-Transcript`, `X-Cadence-Reply`,
 ```
 - With `event`: always speaks (fall follow-up, scheduled check-in, forced reminder).
 - Without `event` (polling): speaks only if a dose is currently due **and** its `X-Cadence-Nudge-Key` differs from `lastNudgeKey`; otherwise `204`. The device should store the returned key so it doesn't repeat the reminder.
+- *(2026-10-24, additive)* When polling and no dose is due, it may instead speak a **scheduled check-in** (phase-based cadence, see the 2026-10-24 Tier 1 entry). Same rules: its key looks like `check_in@<ms>`, and sending it back as `lastNudgeKey` suppresses a repeat. A due dose always wins. Responses also carry `X-Cadence-Event` (`dose_due`, `check_in`, …), which devices may ignore.
 
-Response `200 audio/wav` + `X-Cadence-Reply`, `X-Cadence-Actions`, `X-Cadence-Nudge-Key`, or `204`.
+Response `200 audio/wav` + `X-Cadence-Reply`, `X-Cadence-Actions`, `X-Cadence-Nudge-Key`, `X-Cadence-Event`, or `204`.
 
 **`GET /api/voice/patient?patientId=`**: patient and today's dose slots as JSON (simulator display). Defaults to the first patient.
 

@@ -9,6 +9,7 @@ export const HEADER_TRANSCRIPT = "X-Cadence-Transcript";
 export const HEADER_REPLY = "X-Cadence-Reply";
 export const HEADER_ACTIONS = "X-Cadence-Actions";
 export const HEADER_NUDGE_KEY = "X-Cadence-Nudge-Key";
+export const HEADER_EVENT = "X-Cadence-Event";
 
 export const patientIdSchema = z.string().min(1).max(64);
 export const sessionIdSchema = z.string().min(1).max(128);

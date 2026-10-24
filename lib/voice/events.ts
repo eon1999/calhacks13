@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { DoseSlot } from "../schedule";
+import { checkInsForDay, type RecoveryStatus } from "../onboarding/recovery";
+import { localTimeToday, parseHhMm, type DoseSlot } from "../schedule";
 
 // Things the wearable can report that make the agent speak first.
 export const wearableEvent = z.enum([
@@ -94,4 +95,86 @@ export function describeEvent(event: WearableEvent, slots: DoseSlot[]): string {
 /** Stable key so a client only plays one reminder per set of due slots. */
 export function nudgeKey(slots: DoseSlot[]): string {
   return slots.map((s) => s.slotId).sort().join(",");
+}
+
+// ---- Scheduled check-ins -------------------------------------------------
+
+/** When the band may start a check-in on its own ("HH:mm", patient's time zone). */
+export const WAKING_HOURS = { start: "09:00", end: "21:00" } as const;
+const STEP_MINUTES = 15;
+// A check-in this long before a slot still counts for it, so the band doesn't ask twice in an hour.
+const COVER_LEAD_MINUTES = 60;
+
+export interface DoseTime {
+  time: string; // "HH:mm"
+  windowMinutes: number;
+}
+
+const toMinutes = (time: string) => {
+  const { hour, minute } = parseHhMm(time);
+  return hour * 60 + minute;
+};
+const toHhMm = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+/**
+ * `count` check-in times spread evenly across waking hours, each nudged (in
+ * 15-minute steps, later first, then earlier) out of every dose's reminder
+ * window so a check-in never talks over a dose reminder.
+ */
+export function scheduledCheckInTimes(count: number, doses: DoseTime[], waking = WAKING_HOURS): string[] {
+  if (count <= 0) return [];
+  const start = toMinutes(waking.start);
+  const end = toMinutes(waking.end);
+  const span = end - start;
+  const clashes = (m: number) => doses.some((d) => Math.abs(m - toMinutes(d.time)) <= d.windowMinutes);
+  const times: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const ideal = Math.round((start + ((i + 0.5) * span) / count) / STEP_MINUTES) * STEP_MINUTES;
+    const taken = (m: number) => times.includes(m);
+    let pick: number | null = null;
+    for (let shift = 0; shift <= span && pick === null; shift += STEP_MINUTES) {
+      for (const m of [ideal + shift, ideal - shift]) {
+        if (m >= start && m < end && !clashes(m) && !taken(m)) {
+          pick = m;
+          break;
+        }
+      }
+    }
+    // A day packed with doses: keep the ideal time; the nudge route still won't speak over a due dose.
+    times.push(pick ?? ideal);
+  }
+  return times.sort((a, b) => a - b).map(toHhMm);
+}
+
+export interface ScheduledCheckIn {
+  time: string;
+  scheduledFor: number;
+  /** Nudge key, so the band asks once per slot even if it polls every 30 seconds. */
+  key: string;
+}
+
+/**
+ * The scheduled check-in to start right now, if any: today's current slot
+ * (from its time until the next slot or the end of waking hours) when no
+ * check-in has happened in it yet.
+ */
+export function dueScheduledCheckIn(args: {
+  recovery: Pick<RecoveryStatus, "day" | "phase"> | null;
+  doses: DoseTime[];
+  checkInTimes: number[];
+  timeZone: string;
+  now: number;
+}): ScheduledCheckIn | null {
+  if (!args.recovery) return null;
+  const times = scheduledCheckInTimes(checkInsForDay(args.recovery), args.doses);
+  const at = times.map((t) => localTimeToday(args.timeZone, t, args.now));
+  const wakeEnd = localTimeToday(args.timeZone, WAKING_HOURS.end, args.now);
+  const i = at.findLastIndex((t) => t <= args.now);
+  if (i === -1) return null;
+  const slotEnd = at[i + 1] ?? wakeEnd;
+  if (args.now >= slotEnd) return null;
+  const covered = args.checkInTimes.some((c) => c >= at[i] - COVER_LEAD_MINUTES * 60_000 && c <= args.now);
+  if (covered) return null;
+  return { time: times[i], scheduledFor: at[i], key: `check_in@${at[i]}` };
 }
