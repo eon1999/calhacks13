@@ -9,6 +9,7 @@
  */
 
 import type * as agent from "../agent.js";
+import type * as crons from "../crons.js";
 import type * as debug from "../debug.js";
 import type * as http from "../http.js";
 import type * as invites from "../invites.js";
@@ -17,6 +18,7 @@ import type * as onboarding from "../onboarding.js";
 import type * as pairing from "../pairing.js";
 import type * as profile from "../profile.js";
 import type * as seed from "../seed.js";
+import type * as summary from "../summary.js";
 import type * as voice from "../voice.js";
 import type * as watchList from "../watchList.js";
 
@@ -28,6 +30,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   agent: typeof agent;
+  crons: typeof crons;
   debug: typeof debug;
   http: typeof http;
   invites: typeof invites;
@@ -36,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   pairing: typeof pairing;
   profile: typeof profile;
   seed: typeof seed;
+  summary: typeof summary;
   voice: typeof voice;
   watchList: typeof watchList;
 }>;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction, useMutation, useQuery } from "convex/react";
-import { BellRing, MessageSquareText, Send } from "lucide-react";
+import { BellRing, MessageSquareText, Newspaper, Send } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ export function TextAlertsCard({ patientId }: TextAlertsCardProps) {
   const setPhone = useMutation(api.notify.setMemberPhone);
   const sendTest = useAction(api.notify.sendTestText);
   const setPrefs = useMutation(api.notify.setNotificationPreferences);
+  const sendSummary = useAction(api.summary.sendSummaryNow);
   const [editing, setEditing] = useState<string | null>(null);
   const [prefsOpen, setPrefsOpen] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -69,6 +70,19 @@ export function TextAlertsCard({ patientId }: TextAlertsCardProps) {
     void run(async () => {
       await setPrefs({ userId: identity.id, memberId, preferences });
       return null;
+    });
+  }
+
+  function summaryNow() {
+    if (!identity) return;
+    void run(async () => {
+      const result = await sendSummary({ userId: identity.id, patientId: patientId as Id<"patients"> });
+      const who = result.sent
+        ? `Sent to ${result.sent}.`
+        : result.dryRun
+          ? "Dry run: logged below, not sent."
+          : "Nobody gets the daily summary yet.";
+      return `${who} “${result.preview}”`;
     });
   }
 
@@ -185,6 +199,12 @@ export function TextAlertsCard({ patientId }: TextAlertsCardProps) {
               </li>
             ))}
           </ul>
+        )}
+
+        {overview && (
+          <Button variant="outline" size="sm" disabled={busy} onClick={summaryNow}>
+            <Newspaper /> Send today&apos;s summary now
+          </Button>
         )}
 
         {message && <p className="text-xs">{message}</p>}
