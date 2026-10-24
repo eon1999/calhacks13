@@ -135,7 +135,7 @@ export function TeamStep({ userId, patientId, patientName, members, pendingInvit
                 placeholder={role === "clinician" ? "Dr. Patel" : role === "caregiver" ? "Maria" : "Tom"}
               />
             </Field>
-            <Field label="Email or phone (optional)" htmlFor="inviteContact" hint="For your records. You share the link yourself.">
+            <Field label="Email or phone (optional)" htmlFor="inviteContact" hint="A mobile number here gets their text alerts once they join. You share the link yourself.">
               <TextInput id="inviteContact" value={contact} onChange={(e) => setContact(e.target.value)} />
             </Field>
           </div>

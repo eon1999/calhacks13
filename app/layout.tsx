@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { shadcn } from "@clerk/ui/themes";
+import { ClerkIdentityBridge } from "@/components/auth/clerk-identity";
+import { clerkEnabled } from "@/lib/clerk";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,7 +41,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${plexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {clerkEnabled ? (
+          <ClerkProvider appearance={{ theme: shadcn }}>
+            <ClerkIdentityBridge>{children}</ClerkIdentityBridge>
+          </ClerkProvider>
+        ) : (
+          children
+        )}
+      </body>
     </html>
   );
 }

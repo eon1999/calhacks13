@@ -1,15 +1,20 @@
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { buildDaySchedule, type DoseSlot } from "../schedule";
+import type { DoseTime } from "./events";
 import { convex } from "./convex";
 
 export interface PatientContext {
   patient: Doc<"patients">;
   slots: DoseSlot[];
+  /** Every scheduled dose time, so scheduled check-ins can stay clear of reminders. */
+  doseTimes: DoseTime[];
   lastCheckIn: Doc<"checkIns"> | null;
   checkInsToday: Doc<"checkIns">[];
   alertsToday: Doc<"alerts">[];
   careTeam: CareTeamMember[];
+  /** Check-ins from the past week before today, newest first (agent memory). */
+  recentCheckIns?: Doc<"checkIns">[];
 }
 
 export interface CareTeamMember {
@@ -46,9 +51,11 @@ export async function loadPatientContext(
   return {
     patient: ctx.patient,
     slots,
+    doseTimes: ctx.medications.flatMap((m) => m.times.map((time) => ({ time, windowMinutes: m.windowMinutes }))),
     lastCheckIn: ctx.lastCheckIn,
     checkInsToday: ctx.checkInsToday,
     alertsToday: ctx.alertsToday,
     careTeam: ctx.careTeam,
+    recentCheckIns: ctx.recentCheckIns,
   };
 }

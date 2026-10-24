@@ -91,3 +91,22 @@ export function recoveryStatus(surgeryDate: string, today: string): RecoveryStat
     day < 0 ? `Surgery in ${-day} day${day === -1 ? "" : "s"}` : day === 0 ? "Surgery day" : `Day ${day} after surgery`;
   return { day, phase, label: `${when} · ${PHASES[phase].label}` };
 }
+
+/**
+ * How often the band checks in on its own in each phase: three times a day in
+ * the first days home, easing to every other day once life is back to routine.
+ */
+export const CHECK_IN_CADENCE: Record<RecoveryPhase, { perDay: number; everyOtherDay?: boolean }> = {
+  pre_op: { perDay: 0 },
+  first_days: { perDay: 3 },
+  early: { perDay: 2 },
+  strengthening: { perDay: 1 },
+  routine: { perDay: 1, everyOtherDay: true },
+};
+
+/** Scheduled check-ins for a given post-op day (0 on the off days of "every other day"). */
+export function checkInsForDay(status: Pick<RecoveryStatus, "day" | "phase">): number {
+  const cadence = CHECK_IN_CADENCE[status.phase];
+  if (cadence.everyOtherDay && status.day % 2 !== 0) return 0;
+  return cadence.perDay;
+}

@@ -1,11 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { toE164 } from "../lib/notify/phone";
+import { resolveOptionalUserId, resolveUserId } from "./identity";
 import { ROLES } from "../lib/onboarding/roles";
 import { membership, requireManager } from "./onboarding";
 
 // Invite links: the owner or patient picks a role and a name, shares the
 // link, and the invitee joins the care team from /join/[token].
-// TODO(auth): `userId` is the demo identity; see convex/onboarding.ts.
+// `userId` is resolved to the signed-in Clerk user when there is one (convex/identity.ts).
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60_000;
 
@@ -29,8 +31,9 @@ export const create = mutation({
     name: v.string(),
     contact: v.optional(v.string()),
   },
-  handler: async (ctx, { userId, patientId, role, name, contact }) => {
-    await requireManager(ctx, patientId, userId);
+  handler: async (ctx, { userId: claimed, patientId, role, name, contact }) => {
+    await requireManager(ctx, patientId, claimed);
+    const userId = await resolveUserId(ctx, claimed);
     const cleanName = name.trim();
     if (!cleanName || cleanName.length > 200) throw new Error("Enter a name for the person you're inviting");
     const now = Date.now();
@@ -62,7 +65,8 @@ export const revoke = mutation({
 /** What the invite page shows before someone accepts. */
 export const get = query({
   args: { token: v.string(), userId: v.optional(v.string()), now: v.number() },
-  handler: async (ctx, { token, userId, now }) => {
+  handler: async (ctx, { token, userId: claimed, now }) => {
+    const userId = await resolveOptionalUserId(ctx, claimed);
     const invite = await ctx.db
       .query("invites")
       .withIndex("by_token", (q) => q.eq("token", token))
@@ -100,7 +104,8 @@ export const get = query({
 
 export const accept = mutation({
   args: { token: v.string(), userId: v.string(), name: v.string() },
-  handler: async (ctx, { token, userId, name }) => {
+  handler: async (ctx, { token, userId: claimed, name }) => {
+    const userId = await resolveUserId(ctx, claimed);
     const invite = await ctx.db
       .query("invites")
       .withIndex("by_token", (q) => q.eq("token", token))
@@ -124,6 +129,8 @@ export const accept = mutation({
         permissions: role.permissions,
         name: cleanName,
         urgentAlerts: role.urgentByDefault,
+        // The invite's contact becomes their alert number when it's a phone.
+        phone: invite.contact ? (toE164(invite.contact) ?? undefined) : undefined,
         joinedAt: now,
       });
     }

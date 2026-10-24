@@ -68,7 +68,9 @@ export function useVoiceAgent(patientId?: string) {
   // Created lazily (not during render) so /hub can still be prerendered.
   const sessionRef = useRef<string | null>(null);
   const sessionId = useCallback(() => (sessionRef.current ??= crypto.randomUUID()), []);
-  const [autoReminders, setAutoReminders] = useState(true);
+  // Off by default: the dose engine (convex/doses.ts) now sends reminders as hub
+  // prompts (use-hub-prompts.ts). Polling stays as a fallback for testers.
+  const [autoReminders, setAutoReminders] = useState(false);
   const lastNudgeKey = useRef<string | undefined>(undefined);
   const busy = useRef(false);
 
@@ -156,7 +158,7 @@ export function useVoiceAgent(patientId?: string) {
   );
 
   const nudge = useCallback(
-    (event?: WearableEvent) =>
+    (event?: WearableEvent, opts: { logged?: boolean } = {}) =>
       run(async () => {
         if (!patient) return;
         const res = await fetch("/api/voice/nudge", {
@@ -167,20 +169,22 @@ export function useVoiceAgent(patientId?: string) {
             sessionId: sessionId(),
             event,
             lastNudgeKey: event ? undefined : lastNudgeKey.current,
+            logged: opts.logged,
           }),
         });
         if (res.status === 204) return;
         if (!res.ok) throw new Error(await errorMessage(res));
         const key = header(res, "X-Cadence-Nudge-Key");
         if (key) lastNudgeKey.current = key;
-        append({ who: "event", text: EVENT_LABELS[event ?? "dose_due"] });
+        const spoken = (header(res, "X-Cadence-Event") || event || "dose_due") as WearableEvent;
+        append({ who: "event", text: EVENT_LABELS[spoken] ?? EVENT_LABELS.dose_due });
         setStatus("thinking");
         await speak(res);
       }),
     [patient, sessionId, run, append, speak],
   );
 
-  // Poll for due-dose reminders, like the wearable's heartbeat will.
+  // Poll for due-dose reminders and scheduled check-ins, like the wearable's heartbeat will.
   useEffect(() => {
     if (!patient || !autoReminders) return;
     const tick = () => void nudge();

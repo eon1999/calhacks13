@@ -6,6 +6,8 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./", import.meta.url)) },
   },
   test: {
-    include: ["lib/**/*.test.ts"],
+    // tests/convex runs Convex functions against convex-test's in-memory backend.
+    include: ["lib/**/*.test.ts", "tests/**/*.test.ts"],
+    server: { deps: { inline: ["convex-test"] } },
   },
 });
