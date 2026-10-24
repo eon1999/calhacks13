@@ -156,6 +156,20 @@ describe("prompt", () => {
     careTeam: [],
   } as unknown as PatientContext;
 
+  it("includes earlier check-ins as memory, oldest first", () => {
+    const withMemory = {
+      ...ctx,
+      recentCheckIns: [
+        { at: Date.UTC(2026, 9, 22, 13, 0), state: "sore_but_managing", painScore: 6, notes: "knee throbbing" },
+        { at: Date.UTC(2026, 9, 21, 9, 0), state: "struggling", painScore: 8 },
+      ],
+    } as unknown as PatientContext;
+    const prompt = buildSystemPrompt(withMemory, Date.UTC(2026, 9, 23, 8, 5));
+    expect(prompt).toContain("Earlier check-ins this week");
+    expect(prompt.indexOf("struggling, pain 8/10")).toBeLessThan(prompt.indexOf("pain 6/10 (knee throbbing)"));
+    expect(buildSystemPrompt(ctx, Date.UTC(2026, 9, 23, 8, 5))).not.toContain("Earlier check-ins");
+  });
+
   it("describes the recovery, care team and pending consent from onboarding", () => {
     const onboarded = {
       ...ctx,

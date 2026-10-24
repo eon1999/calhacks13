@@ -12,6 +12,9 @@ import { reportFall, reportSos, resolveFallHelped, resolveFallOk } from "./safet
 // server secret or device-token auth (see convex/http.ts TODO).
 
 const HISTORY_LIMIT = 30;
+// Check-in memory for the agent (the design's Moss layer; see lib/voice/prompt.ts).
+const MEMORY_DAYS = 7;
+const MEMORY_CHECK_INS = 6;
 
 export const firstPatient = query({
   args: {},
@@ -45,6 +48,15 @@ export const getContext = query({
       .order("desc")
       .first();
 
+    // Memory: how earlier check-ins went, so the agent can follow up on them.
+    const recentCheckIns = await ctx.db
+      .query("checkIns")
+      .withIndex("by_patient_time", (q) =>
+        q.eq("patientId", patientId).gte("at", start - MEMORY_DAYS * 86_400_000).lt("at", start),
+      )
+      .order("desc")
+      .take(MEMORY_CHECK_INS);
+
     // What's already been done today, so the agent doesn't repeat it across turns.
     const checkInsToday = await ctx.db
       .query("checkIns")
@@ -71,7 +83,7 @@ export const getContext = query({
         urgentAlerts: m.urgentAlerts ?? false,
       }));
 
-    return { patient, medications, doseEvents, lastCheckIn, checkInsToday, alertsToday, careTeam };
+    return { patient, medications, doseEvents, lastCheckIn, checkInsToday, alertsToday, careTeam, recentCheckIns };
   },
 });
 

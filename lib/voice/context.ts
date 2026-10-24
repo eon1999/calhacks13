@@ -10,6 +10,8 @@ export interface PatientContext {
   checkInsToday: Doc<"checkIns">[];
   alertsToday: Doc<"alerts">[];
   careTeam: CareTeamMember[];
+  /** Check-ins from the past week before today, newest first (agent memory). */
+  recentCheckIns?: Doc<"checkIns">[];
 }
 
 export interface CareTeamMember {
@@ -50,5 +52,6 @@ export async function loadPatientContext(
     checkInsToday: ctx.checkInsToday,
     alertsToday: ctx.alertsToday,
     careTeam: ctx.careTeam,
+    recentCheckIns: ctx.recentCheckIns,
   };
 }
