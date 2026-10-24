@@ -17,56 +17,56 @@ export interface StoryBeat {
 
 export const HERO = {
   shape: "ecg" as ShapeName,
-  kicker: "A voice wristband for recovering at home after surgery",
+  kicker: "Peace of mind for families looking after someone at home",
   lines: [
-    { em: "Care", text: "that" },
-    { text: "keeps time" },
-    { text: "with you" },
+    { em: "Be there", text: "even" },
+    { text: "when you" },
+    { text: "can't be" },
   ] satisfies HeadlineLine[],
 };
 
 export const STORY: StoryBeat[] = [
   {
+    id: "watches",
+    shape: "heart",
+    tag: "Keeps watch",
+    lines: [{ em: "Know", text: "how they're" }, { text: "really doing" }],
+    sub: "Doses, heart rate, temperature, movement and how they say they feel, in one live picture the whole family shares, wherever you are.",
+  },
+  {
+    id: "alerts",
+    shape: "wave",
+    tag: "Speaks up",
+    lines: [{ text: "Tells you", emAfter: "when" }, { text: "it matters" }],
+    sub: "A fall, a fever, a missed dose, a check-in that sounds off: the right person gets a text in seconds. Everything else waits for the evening summary, so you're never buried in pings.",
+  },
+  {
     id: "reminds",
     shape: "capsule",
-    tag: "Reminds",
-    lines: [{ em: "It", text: "reminds you" }, { text: "before it's" }, { text: "too late" }],
-    sub: "Pain relief, antibiotics, blood thinners: every dose on time and out loud. Gentle, never nagging, and it knows a missed dose from a late one.",
-  },
-  {
-    id: "listens",
-    shape: "wave",
-    tag: "Listens",
-    lines: [{ text: "Listens" }, { em: "in", text: "plain words" }],
-    sub: "Tap the band and talk. It asks about pain, the wound, sleep and getting around, and remembers so you don't have to.",
-  },
-  {
-    id: "cares",
-    shape: "heart",
-    tag: "Cares",
-    lines: [{ text: "Speaks up", emAfter: "when" }, { text: "it matters" }],
-    sub: "Falls, fevers, a wound that looks wrong, missed doses: red flags reach your care team in seconds, with the context they need to help.",
+    tag: "Looks after them",
+    lines: [{ em: "So", text: "you don't" }, { text: "have to call" }, { text: "and ask" }],
+    sub: "Every dose on time and out loud, and a friendly check-in on pain, sleep and getting around. No more “did you take your pills?” calls.",
   },
   {
     id: "people",
     shape: "sphere",
     tag: "Our people",
-    lines: [{ em: "We" }, { text: "build for" }, { text: "steady days," }, { text: "not perfect ones" }],
-    sub: "Designed with people home from surgery, the families and aides who help them, and the clinicians who follow their recovery.",
+    lines: [{ em: "We" }, { text: "build for" }, { text: "the whole" }, { text: "family" }],
+    sub: "For parents and partners home from surgery, the sons, daughters and aides who look after them, and the clinicians who follow their recovery.",
   },
 ];
 
 export const FEATURES = [
+  "Live family dashboard",
+  "Fall alerts to family",
+  "Text alerts, with quiet hours",
+  "Daily summary texts",
+  "Missed-dose alerts",
+  "Heart rate and temperature watch",
+  "Emergency contacts",
   "Spoken dose reminders",
   "Tap-to-talk check-ins",
-  "Pain and wound check-ins",
-  "Fall follow-up",
-  "Care-team alerts",
-  "Recovery timeline",
-  "Adherence reports",
-  "Caregiver companion",
-  "Move-more nudges",
-  "Daily recovery summaries",
+  "Clinician reports",
 ];
 
 export interface Surface {
@@ -78,10 +78,10 @@ export interface Surface {
 }
 
 export const SURFACES: Surface[] = [
-  { href: "/hub", title: "Wearable simulator", tags: ["Voice", "Live"], hue: ["#9047ff", "#ffb4e6"], glyph: "◯" },
-  { href: "/care", title: "Care dashboard", tags: ["Caregivers", "Alerts"], hue: ["#4a1aa8", "#7fd3ff"], glyph: "♡" },
+  { href: "/care", title: "Family dashboard", tags: ["Family", "Alerts"], hue: ["#4a1aa8", "#7fd3ff"], glyph: "♡" },
+  { href: "/hub", title: "Their wristband", tags: ["Voice", "Live"], hue: ["#9047ff", "#ffb4e6"], glyph: "◯" },
+  { href: "/settings", title: "Who gets told", tags: ["Texts", "Quiet hours"], hue: ["#6b2fe0", "#f5efff"], glyph: "⌁" },
   { href: "/demo", title: "Demo controls", tags: ["Seed", "Events"], hue: ["#2a1647", "#c79bff"], glyph: "◐" },
-  { href: "/settings", title: "Settings", tags: ["Schedule", "Voice"], hue: ["#6b2fe0", "#f5efff"], glyph: "⌁" },
 ];
 
 export interface DayMoment {
@@ -94,23 +94,23 @@ export const DAY: { part: string; moments: DayMoment[] }[] = [
   {
     part: "Morning",
     moments: [
-      { time: "07:30", label: "Good-morning check-in", kind: "Voice" },
+      { time: "07:30", label: "Mom's good-morning check-in: slept well", kind: "Voice" },
       { time: "08:00", label: "Pain relief and blood thinner, spoken", kind: "Dose" },
-      { time: "08:04", label: "“Taken” — logged by voice", kind: "Log" },
+      { time: "08:04", label: "“Taken”: you see it on your phone", kind: "Family" },
     ],
   },
   {
     part: "Afternoon",
     moments: [
-      { time: "13:10", label: "Quiet for three hours: a nudge to take a short walk", kind: "Movement" },
+      { time: "13:10", label: "Quiet for three hours: a nudge to walk, no call needed", kind: "Movement" },
       { time: "14:00", label: "Pain 4/10, wound looks fine", kind: "Check-in" },
     ],
   },
   {
     part: "Evening",
     moments: [
-      { time: "18:45", label: "“Feeling hot and shivery”: fever flagged to the family", kind: "Care team" },
-      { time: "21:30", label: "Day 3 summary ready for the surgical team", kind: "Report" },
+      { time: "18:45", label: "“Feeling hot and shivery”: you get a text", kind: "Alert" },
+      { time: "20:00", label: "Summary text: 6/6 doses, pain 5→3", kind: "Family" },
     ],
   },
 ];
@@ -119,7 +119,7 @@ export const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/start", label: "Get started" },
   { href: "/hub", label: "Simulator" },
-  { href: "/care", label: "Care" },
+  { href: "/care", label: "Family" },
   { href: "/demo", label: "Demo" },
   { href: "/settings", label: "Settings" },
 ];

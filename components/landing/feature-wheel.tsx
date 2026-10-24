@@ -56,8 +56,8 @@ export function FeatureWheel() {
             data-split
             className="mt-6 max-w-[22ch] font-display text-[clamp(1.9rem,3.4vw,3.2rem)] leading-[1.02] tracking-tight"
           >
-            Cadence lives on the wrist and in the cloud. It reminds, listens and speaks up, then gives everyone the
-            same clear picture of the day.
+            Cadence lives on their wrist and on your phone. It looks after them through the day and keeps the whole
+            family on the same page, without anyone having to hover.
           </p>
           <div data-fade className="mt-8">
             <GlassButton href="/hub">Try the simulator</GlassButton>
