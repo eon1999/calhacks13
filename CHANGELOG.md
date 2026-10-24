@@ -15,7 +15,7 @@ Clerk app `app_3L8w9uL7WMgglgSoAK50VLOntIN` (chosen in the Clerk Dashboard). The
 - `components/convex-client-provider.tsx`: `ConvexProviderWithClerk` when enabled, so Convex calls carry the Clerk token.
 - `components/onboarding/use-demo-identity.ts`: returns the Clerk user id when signed in; otherwise the old per-browser demo id.
 - `components/auth/auth-controls.tsx`: Sign in / Sign up (modal) or `UserButton`, in the AppShell, onboarding and /hub headers.
-- `convex/auth.config.ts`: Clerk provider when `CLERK_JWT_ISSUER_DOMAIN` is set on the deployment. `convex/identity.ts` `resolveUserId()`: a signed-in caller is `identity.subject` whatever `userId` they send; signed out falls back to the demo id unless `CADENCE_REQUIRE_AUTH=1`. Used by `membership`/`requireManager` (so onboarding, invites, pairing, devices and settings), `createPatient` and invites.
+- `convex/auth.config.ts`: trusts tokens from `https://perfect-ewe-2767.clerk.accounts.dev` (hard-coded: Convex refuses to deploy an auth config that reads an unset env var). `convex/identity.ts` `resolveUserId()`: a signed-in caller is `identity.subject` whatever `userId` they send; signed out falls back to the demo id unless `CADENCE_REQUIRE_AUTH=1`. Used by `membership`/`requireManager` (so onboarding, invites, pairing, devices and settings), `createPatient` and invites.
 - `reports.patients`: signed in, lists only your care-team patients plus the demo patient.
 - `tests/convex/identity.test.ts`: spoofing another user's id fails when signed in; demo mode still works.
 
