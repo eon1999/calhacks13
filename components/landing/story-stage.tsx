@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { animate } from "animejs";
 import type { ShapeName } from "@/lib/landing/particles";
 import { HERO, STORY, type StoryBeat } from "./content";
+import { GlassButton } from "./glass-button";
 import { Headline } from "./headline";
 import { ParticleField, type ParticleFieldHandle } from "./particle-field";
 import { Sky } from "./sky";
@@ -39,7 +40,7 @@ function Hero({ ready, onActive }: { ready: boolean; onActive: OnActive }) {
   }, []);
 
   return (
-    <div ref={section} className="relative z-10 flex min-h-[100svh] items-end px-5 pb-28 md:px-10 md:pb-32">
+    <div ref={section} className="relative z-10 flex min-h-[100svh] items-end px-5 pb-28 pt-10 md:px-10 md:pb-32 md:pt-12">
       <div ref={copy} className="invisible w-full">
         <p data-fade className="mono-label max-w-[30ch] text-white/90">
           {HERO.kicker}
@@ -47,9 +48,10 @@ function Hero({ ready, onActive }: { ready: boolean; onActive: OnActive }) {
         <Headline
           as="h1"
           lines={HERO.lines}
-          className="mt-5 text-[clamp(4.2rem,13vw,14rem)] text-white"
+          className="mt-5 text-[clamp(3.6rem,8.6vw,8.75rem)] text-white"
         />
         <div data-fade className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 text-white/85">
+          <GlassButton href="/hub">Try the live demo</GlassButton>
           <span className="mono-label flex items-center gap-3">
             <span className="relative block h-8 w-px overflow-hidden bg-white/25">
               <span ref={cue} className="absolute inset-0 origin-top bg-white" />
@@ -67,7 +69,7 @@ function Beat({ beat, index, onActive }: { beat: StoryBeat; index: number; onAct
   const copy = useReveal<HTMLDivElement>({ when: "scroll" });
 
   return (
-    <div ref={section} className="relative z-10 flex min-h-[115svh] items-end px-5 pb-28 md:px-10 md:pb-32">
+    <div ref={section} className="relative z-10 flex min-h-[100svh] items-end px-5 pb-28 md:px-10 md:pb-32">
       <div ref={copy} className="invisible max-w-[min(92vw,720px)]">
         <span data-fade className="tag-pill">
           {beat.tag}

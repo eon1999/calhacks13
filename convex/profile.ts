@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { cleanList, insertMedication, optionalText, text } from "./onboarding";
+import { cleanList, insertMedication, optionalText, text, validTimeZone } from "./onboarding";
 
 // Patient profile editor on the /hub demo page: conditions, medicines and
 // emergency contacts for whichever patient the simulated band is talking to.
@@ -9,6 +9,13 @@ import { cleanList, insertMedication, optionalText, text } from "./onboarding";
 
 export const MAX_CONTACTS = 5;
 const PHONE = /^[+()\-.\s\d]{7,20}$/;
+
+/** A blank patient to onboard live on /hub; the onboarding panel fills in the rest. */
+export const createPatient = mutation({
+  args: { name: v.string(), timeZone: v.string() },
+  handler: async (ctx, { name, timeZone }) =>
+    ctx.db.insert("patients", { name: text(name, "Name"), timeZone: validTimeZone(timeZone) }),
+});
 
 export const get = query({
   args: { patientId: v.id("patients") },

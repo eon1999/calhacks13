@@ -32,10 +32,13 @@ const MAX_CONTACTS = 5;
 const RELATIONSHIPS = ["Daughter", "Son", "Spouse", "Partner", "Friend", "Neighbor", "Caregiver"];
 
 interface PatientOnboardingProps {
-  /** The patient the simulated band is talking to; undefined until one exists. */
+  /** The patient the simulated band is talking to; undefined until one is created. */
   patientId?: string;
   loadError: string | null;
-  onSeed: () => Promise<void>;
+  /** A newly created patient becomes the band's patient. */
+  onCreated: (patientId: string) => void;
+  /** Leave this patient and show the create form again. */
+  onNewPatient: () => void;
   /** Re-fetch the band's dose schedule after a medicine changes. */
   onMedsChanged: () => Promise<void>;
 }
@@ -48,35 +51,76 @@ function Panel({ children }: { children: ReactNode }) {
   );
 }
 
-/** Demo onboarding on /hub: conditions, medications and emergency contacts for the band's patient. */
-export function PatientOnboarding({ patientId, loadError, onSeed, onMedsChanged }: PatientOnboardingProps) {
-  const [seeding, setSeeding] = useState(false);
-
-  if (!patientId) {
-    return (
-      <Panel>
-        <p className="mono-label text-violet">Patient onboarding</p>
-        <p className="mt-3 font-display text-3xl">No patient yet</p>
-        <p className="mt-2 text-sm text-plum-muted">{loadError ?? "Create the demo patient to start onboarding."}</p>
-        <PrimaryButton
-          type="button"
-          className="mt-6"
-          disabled={seeding}
-          onClick={() => {
-            setSeeding(true);
-            void onSeed().finally(() => setSeeding(false));
-          }}
-        >
-          {seeding ? "Creating…" : "Create demo patient"}
-        </PrimaryButton>
-      </Panel>
-    );
-  }
-
-  return <OnboardingSteps patientId={patientId as Id<"patients">} onMedsChanged={onMedsChanged} />;
+/** Demo onboarding on /hub: create a patient, then conditions, medications and emergency contacts. */
+export function PatientOnboarding({ patientId, loadError, onCreated, onNewPatient, onMedsChanged }: PatientOnboardingProps) {
+  if (!patientId) return <CreatePatient loadError={loadError} onCreated={onCreated} />;
+  return (
+    <OnboardingSteps
+      patientId={patientId as Id<"patients">}
+      onNewPatient={onNewPatient}
+      onMedsChanged={onMedsChanged}
+    />
+  );
 }
 
-function OnboardingSteps({ patientId, onMedsChanged }: { patientId: Id<"patients">; onMedsChanged: () => Promise<void> }) {
+function CreatePatient({ loadError, onCreated }: { loadError: string | null; onCreated: (patientId: string) => void }) {
+  const createPatient = useMutation(api.profile.createPatient);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function create(e: FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const id = await createPatient({ name: name.trim(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+      onCreated(id);
+    } catch (err: unknown) {
+      setError(errorText(err));
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Panel>
+      <form onSubmit={(e) => void create(e)}>
+        <p className="mono-label text-violet">Patient onboarding</p>
+        <h2 className="display mt-3 text-4xl">
+          <em>Who</em> are we looking after?
+        </h2>
+        <p className="mt-2 text-sm text-plum-muted">
+          Create a patient for this demo, then add their conditions, medicines and emergency contacts.
+        </p>
+        <div className="mt-6">
+          <Field label="Patient's name" htmlFor="newPatientName">
+            <TextInput
+              id="newPatientName"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Robert Chen"
+            />
+          </Field>
+        </div>
+        <ErrorNote message={error ?? (loadError && loadError !== "Patient not found" ? loadError : null)} />
+        <PrimaryButton type="submit" className="mt-6" disabled={!name.trim() || saving}>
+          {saving ? "Creating…" : "Create patient"}
+        </PrimaryButton>
+      </form>
+    </Panel>
+  );
+}
+
+function OnboardingSteps({
+  patientId,
+  onNewPatient,
+  onMedsChanged,
+}: {
+  patientId: Id<"patients">;
+  onNewPatient: () => void;
+  onMedsChanged: () => Promise<void>;
+}) {
   const profile = useQuery(api.profile.get, { patientId });
   const setConditions = useMutation(api.profile.setConditions);
   const addMedication = useMutation(api.profile.addMedication);
@@ -120,7 +164,12 @@ function OnboardingSteps({ patientId, onMedsChanged }: { patientId: Id<"patients
     <Panel>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="mono-label text-violet">Patient onboarding</p>
-        <p className="mono-label text-plum-muted">For {profile.name}</p>
+        <p className="mono-label flex items-baseline gap-2 text-plum-muted">
+          For {profile.name}
+          <TextButton type="button" onClick={onNewPatient}>
+            + New patient
+          </TextButton>
+        </p>
       </div>
 
       <ol className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-b border-plum/10 pb-4">
