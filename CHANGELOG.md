@@ -5,6 +5,20 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Simulator matches the design, headings in sentence case
+
+**Simulator** (`/hub` and `/hub?demo=1`) now uses the landing/setup look instead of grey shadcn defaults.
+- It sits in `OnboardingShell` (the wordmark header and lilac clouds) via a new `wide` prop that drops the aside column, under a display heading with a Debug or Demo tag. The links between views are mono labels.
+- `.cadence-theme` in `app/globals.css` points the shadcn tokens (`--primary`, `--card`, `--border`, …) at the palette, so every Card, Button and Badge inside the hub becomes lilac glass with violet accents without per-component edits. It's scoped to the hub, so other pages are untouched.
+- **The band** has a plum bezel, a strap, a lilac face and the glass-pill mic, with the status in the display serif. It's pinned on the left (`md:sticky`) with the typed-input box under it.
+- **The right column** holds Today's medicines (time in violet mono, name in serif), then Conversation, then Try it or Debug tools, then Band setup and Text alerts side by side. The conversation is chat bubbles: the patient on the right, Cadence on the left, device events as labelled dividers.
+- Card titles, section labels and inputs share classes in `components/wearable/styles.ts`. `cardTitle` spells the mono label out as utilities, because `.mono-label` (a component class) loses to CardTitle's own font utilities.
+
+**Display headings are sentence case.** `.display` no longer uppercases. The source text was already written in sentence case, so the landing page, setup, the demo guide and the simulator now read "*What* do they take, and when?" instead of "*What* DO THEY TAKE, AND WHEN?". Line height went from 0.86 to 0.92 so descenders don't collide. Mono labels are still all caps.
+
+**Verified:** `tsc`, `eslint`, unit tests. In the browser: `/hub` (debug) with a typed turn rendered as bubbles; `/hub?demo=1` with the auto-reminder event divider and the Try it card; 375px width with no horizontal scroll (band and cards inside 20px gutters); the landing page and `/demo` headings computed as `text-transform: none`; no console errors.
+- The dev server missed the first `globals.css` change until the file was touched again, so if headings still look uppercase, touch the file or restart `next dev`.
+
 ## 2026-10-24: Setup pickers are dropdowns
 
 Setup's button groups are now dropdowns, so each step is a short column of fields instead of a wall of pills and cards.

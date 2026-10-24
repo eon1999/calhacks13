@@ -22,6 +22,7 @@ import { EVENT_LABELS, type WearableEvent } from "@/lib/voice/events";
 import { FamilyTextsSection } from "./family-texts-section";
 import { useDebugActivity, type DebugActivity } from "./use-debug-activity";
 import type { useVoiceAgent } from "./use-voice-agent";
+import { cardTitle, field, sectionLabel } from "./styles";
 
 type Agent = ReturnType<typeof useVoiceAgent>;
 
@@ -62,7 +63,7 @@ function timeAgo(at: number): string {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className={sectionLabel}>{title}</p>
       {children}
     </div>
   );
@@ -147,13 +148,13 @@ export function DebugPanel({ agent, busy }: DebugPanelProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle className={cardTitle}>
           <Bug className="size-4" /> Debug tools
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         <Section title="Trigger wearable event">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {EVENT_BUTTONS.map(({ event, icon, danger }) => (
               <Button
                 key={event}
@@ -201,7 +202,7 @@ export function DebugPanel({ agent, busy }: DebugPanelProps) {
             onChange={(e) => setMessage(e.target.value)}
             maxLength={500}
             rows={2}
-            className="w-full rounded-lg border bg-background px-2.5 py-1.5 text-sm"
+            className={`${field} w-full py-2`}
           />
           <Button
             variant="outline"
@@ -215,11 +216,12 @@ export function DebugPanel({ agent, busy }: DebugPanelProps) {
         <ActivityFeed activity={feed.activity} error={feed.error} refresh={feed.refresh} />
 
         <Section title="Settings">
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-sm text-plum">
             <input
               type="checkbox"
               checked={agent.autoReminders}
               onChange={(e) => agent.setAutoReminders(e.target.checked)}
+              className="accent-violet"
             />
             <Activity className="size-4" /> Auto-remind when a dose is due (polls every 30s)
           </label>

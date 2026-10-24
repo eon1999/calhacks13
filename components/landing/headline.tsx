@@ -6,7 +6,7 @@ interface HeadlineProps {
   as?: "h1" | "h2";
 }
 
-/** Display headline: uppercase serif lines with italic lead-ins. */
+/** Display headline: sentence-case serif lines with italic lead-ins. */
 export function Headline({ lines, className = "", as: Tag = "h2" }: HeadlineProps) {
   return (
     <Tag data-split className={`display ${className}`}>

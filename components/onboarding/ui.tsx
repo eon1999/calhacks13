@@ -8,7 +8,15 @@ import { Wordmark } from "@/components/landing/wordmark";
 // Form primitives for onboarding, in the landing page's lilac/plum language:
 // display-serif headlines, mono labels, glass pill buttons.
 
-export function OnboardingShell({ aside, children, label = "Setup" }: { aside?: ReactNode; children: ReactNode; label?: string }) {
+interface OnboardingShellProps {
+  aside?: ReactNode;
+  children: ReactNode;
+  label?: string;
+  /** Use the full width instead of leaving a column for `aside` (the simulator). */
+  wide?: boolean;
+}
+
+export function OnboardingShell({ aside, children, label = "Setup", wide = false }: OnboardingShellProps) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-lilac text-plum">
       {/* soft dusk clouds, echoing the landing sky */}
@@ -25,10 +33,14 @@ export function OnboardingShell({ aside, children, label = "Setup" }: { aside?: 
         <span className="mono-label text-plum-muted">{label}</span>
       </header>
 
-      <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-24 md:grid-cols-[220px_1fr] md:px-10 md:pt-6">
-        {aside ? <aside>{aside}</aside> : <div />}
-        <main>{children}</main>
-      </div>
+      {wide ? (
+        <main className="relative mx-auto max-w-6xl px-5 pb-24 md:px-10 md:pt-6">{children}</main>
+      ) : (
+        <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-24 md:grid-cols-[220px_1fr] md:px-10 md:pt-6">
+          {aside ? <aside>{aside}</aside> : <div />}
+          <main>{children}</main>
+        </div>
+      )}
     </div>
   );
 }

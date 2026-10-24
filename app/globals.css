@@ -138,17 +138,15 @@
 }
 /* ---------- Landing ---------- */
 @layer components {
-  /* Light condensed-feel serif headline, uppercase with italic lead-ins. */
+  /* Light condensed-feel serif headline in sentence case, with italic lead-ins. */
   .display {
     font-family: var(--font-instrument-serif), serif;
     font-weight: 400;
-    text-transform: uppercase;
-    line-height: 0.86;
+    line-height: 0.92;
     letter-spacing: -0.02em;
   }
   .display em {
     font-style: italic;
-    text-transform: none;
   }
 
   .mono-label {
@@ -215,6 +213,37 @@
     background:
       radial-gradient(120% 160% at 50% 0%, rgb(186 140 255 / 0.55), transparent 70%),
       linear-gradient(90deg, rgb(110 52 210 / 0.75), rgb(144 71 255 / 0.65));
+  }
+}
+
+/* ---------- Simulator (/hub) ----------
+   Re-points the shadcn tokens at the landing palette, so Card/Button/Badge
+   inside the hub read as lilac glass instead of grey. */
+.cadence-theme {
+  --background: #fbf8ff;
+  --foreground: #2a1647;
+  --card: rgb(255 255 255 / 0.55);
+  --card-foreground: #2a1647;
+  --popover: #fbf8ff;
+  --popover-foreground: #2a1647;
+  --primary: #9047ff;
+  --primary-foreground: #fff;
+  --secondary: #ece1ff;
+  --secondary-foreground: #2a1647;
+  --muted: #f1e9ff;
+  --muted-foreground: #64698b;
+  --accent: #f1e9ff;
+  --accent-foreground: #2a1647;
+  --border: rgb(42 22 71 / 0.12);
+  --input: rgb(42 22 71 / 0.15);
+  --ring: #9047ff;
+  --radius: 1rem;
+}
+@layer components {
+  .cadence-theme [data-slot="card"] {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 18px 40px -28px rgb(66 18 140 / 0.45);
   }
 }
 

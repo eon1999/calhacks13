@@ -10,6 +10,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useDemoIdentity } from "@/components/onboarding/use-demo-identity";
 import { toE164 } from "@/lib/notify/phone";
+import { cardTitle, field, sectionLabel } from "./styles";
 
 interface TextAlertsCardProps {
   patientId: string;
@@ -70,7 +71,7 @@ export function TextAlertsCard({ patientId }: TextAlertsCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle className={cardTitle}>
           <MessageSquareText className="size-4" /> Text alerts
         </CardTitle>
         {overview && (
@@ -81,12 +82,12 @@ export function TextAlertsCard({ patientId }: TextAlertsCardProps) {
         {overview === null && (
           <p className="text-muted-foreground">
             Only the patient&apos;s care team can see this. Open it in the browser that ran{" "}
-            <a href="/start" className="underline">setup</a>.
+            <a href="/start" className="text-violet underline-offset-4 hover:underline">setup</a>.
           </p>
         )}
 
         {overview?.testTextTo && (
-          <p className="rounded-md border border-destructive/30 px-2 py-1.5 text-xs text-destructive">
+          <p className="rounded-xl border border-destructive/30 bg-white/60 px-3 py-2 text-xs text-destructive">
             Debug: every alert texts the test number {overview.testTextTo} instead of the people below. Turn it off in
             Debug tools → Text the family.
           </p>
@@ -134,7 +135,7 @@ export function TextAlertsCard({ patientId }: TextAlertsCardProps) {
                       onChange={(e) => setDraft(e.target.value)}
                       placeholder="(415) 555-0123"
                       aria-label={`Mobile number for ${r.name}`}
-                      className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1"
+                      className={`${field} h-8 flex-1`}
                     />
                     <Button type="submit" size="sm" disabled={busy || (!!draft.trim() && !toE164(draft))}>
                       {draft.trim() ? "Save" : "Remove"}
@@ -153,7 +154,7 @@ export function TextAlertsCard({ patientId }: TextAlertsCardProps) {
 
         {overview && overview.recent.length > 0 && (
           <div className="space-y-2 border-t pt-3">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Recent texts</p>
+            <p className={sectionLabel}>Recent texts</p>
             <ul className="space-y-2">
               {overview.recent.map((t) => (
                 <li key={t.id} className="text-xs">

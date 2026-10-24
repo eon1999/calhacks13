@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPairingCode, spokenPairingCode } from "@/lib/onboarding/pairing";
 import type { BandPairing } from "./use-band-pairing";
 import type { useVoiceAgent } from "./use-voice-agent";
+import { cardTitle } from "./styles";
 
 type Agent = ReturnType<typeof useVoiceAgent>;
 
@@ -25,11 +26,11 @@ export function PairingCard({ pairing, error, agent, busy, onForget }: PairingCa
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle className={cardTitle}>
           <Link2 className="size-4" /> Band setup
         </CardTitle>
         {pairing.state !== "loading" && (
-          <span className="font-mono text-xs text-muted-foreground">{pairing.deviceId}</span>
+          <span className="mono-label text-plum-muted/70">{pairing.deviceId}</span>
         )}
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
@@ -40,10 +41,14 @@ export function PairingCard({ pairing, error, agent, busy, onForget }: PairingCa
         {pairing.state === "code" && (
           <>
             <p className="text-muted-foreground">
-              Enter this code in <a href="/start" target="_blank" rel="noreferrer" className="underline">setup</a> to pair
+              Enter this code in{" "}
+              <a href="/start" target="_blank" rel="noreferrer" className="text-violet underline-offset-4 hover:underline">
+                setup
+              </a>{" "}
+              to pair
               the band.
             </p>
-            <p className="text-center font-mono text-4xl tracking-[0.25em]" aria-label={`Pairing code ${pairing.code}`}>
+            <p className="py-2 text-center font-plex text-4xl tracking-[0.25em] text-violet" aria-label={`Pairing code ${pairing.code}`}>
               {formatPairingCode(pairing.code)}
             </p>
             <Button

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
+import { OnboardingShell } from "@/components/onboarding/ui";
 import { WearableSimulator, type SimulatorMode } from "@/components/wearable/wearable-simulator";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -10,41 +11,61 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 // default; ?demo=1 is the judge-facing view (no debug tools).
 export default function HubPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <main className="p-8">
-      {/* searchParams is request data, so it's read inside Suspense (Next 16 prerendering). */}
-      <Suspense fallback={null}>
-        <Hub searchParams={searchParams} />
-      </Suspense>
-    </main>
+    // searchParams is request data, so it's read inside Suspense (Next 16 prerendering).
+    <Suspense fallback={<OnboardingShell label="Band" wide>{null}</OnboardingShell>}>
+      <Hub searchParams={searchParams} />
+    </Suspense>
   );
 }
+
+const navLink = "mono-label rounded-full px-3 py-2 text-plum-muted transition-colors hover:text-violet";
 
 async function Hub({ searchParams }: { searchParams: SearchParams }) {
   const mode: SimulatorMode = (await searchParams).demo ? "demo" : "debug";
   return (
-    <>
-      <div className="mx-auto mb-6 flex max-w-5xl flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-3xl font-bold">{mode === "demo" ? "Cadence band" : "Wearable simulator"}</h1>
-        <nav className="flex gap-4 text-sm">
+    <OnboardingShell label={mode === "demo" ? "Band" : "Simulator"} wide>
+      <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
+        <div>
+          <span className="tag-pill">▸ {mode === "demo" ? "Demo" : "Debug tools on"}</span>
+          <h1 className="display mt-5 text-[clamp(2.4rem,5vw,4.25rem)]">
+            {mode === "demo" ? (
+              <>
+                <em>The</em> Cadence band
+              </>
+            ) : (
+              <>
+                <em>Wearable</em> simulator
+              </>
+            )}
+          </h1>
+          <p className="mt-4 max-w-[52ch] text-base text-plum-muted">
+            {mode === "demo"
+              ? "Talk to it like the person wearing it would. When something sounds wrong, the family gets a text."
+              : "A browser stand-in for the wristband. It calls the same endpoints the firmware will."}
+          </p>
+        </div>
+        <nav className="flex gap-1">
           {mode === "demo" ? (
             <>
-              <Link href="/demo" className="text-muted-foreground underline-offset-4 hover:underline">
-                Demo guide
+              <Link href="/demo" className={navLink}>
+                ← Demo guide
               </Link>
-              <Link href="/hub" className="text-muted-foreground underline-offset-4 hover:underline">
+              <Link href="/hub" className={navLink}>
                 Debug tools
               </Link>
             </>
           ) : (
-            <Link href="/hub?demo=1" className="text-muted-foreground underline-offset-4 hover:underline">
-              Demo view
+            <Link href="/hub?demo=1" className={navLink}>
+              Demo view →
             </Link>
           )}
         </nav>
       </div>
-      <ConvexClientProvider>
-        <WearableSimulator mode={mode} />
-      </ConvexClientProvider>
-    </>
+      <div className="cadence-theme">
+        <ConvexClientProvider>
+          <WearableSimulator mode={mode} />
+        </ConvexClientProvider>
+      </div>
+    </OnboardingShell>
   );
 }

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { maskPhone, toE164 } from "@/lib/notify/phone";
 import type { DebugActivity } from "./use-debug-activity";
+import { field } from "./styles";
 
 type Tier = "urgent" | "notify" | "ask";
 
@@ -106,7 +107,7 @@ export function FamilyTextsSection({ patientId, patientName, activity, refresh }
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Test phone, e.g. (415) 555-0123"
           aria-label="Test phone number for family texts"
-          className="h-8 min-w-0 flex-1 rounded-lg border bg-background px-2.5 text-sm"
+          className={`${field} h-8 flex-1`}
         />
         <Button type="submit" size="sm" disabled={working || !draftOk || draft.trim() === (testTo ?? "")}>
           <Smartphone /> Save

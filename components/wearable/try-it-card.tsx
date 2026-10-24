@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { WearableEvent } from "@/lib/voice/events";
 import type { useVoiceAgent } from "./use-voice-agent";
+import { cardTitle } from "./styles";
 
 type Agent = ReturnType<typeof useVoiceAgent>;
 
@@ -26,10 +27,10 @@ export function TryItCard({ agent, busy }: TryItCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm">Try it</CardTitle>
+        <CardTitle className={cardTitle}>Try it</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           {MOMENTS.map((m) => (
             <Button
               key={m.label}
