@@ -1,15 +1,7 @@
 import { v, type Infer } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import {
-  action,
-  internalAction,
-  internalMutation,
-  internalQuery,
-  mutation,
-  query,
-  type MutationCtx,
-} from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { maskPhone } from "../lib/notify/phone";
 import { alertTextBody, getsDailySummary, hasUrgentGap, planTexts, preferencesOf, type TextableMember } from "../lib/notify/plan";
 import { presetOf, validatePreferences } from "../lib/notify/preferences";
@@ -17,33 +9,16 @@ import { sendSms, twilioConfig } from "../lib/notify/twilio";
 import { formatLocalTime } from "../lib/schedule";
 import { membership, optionalPhone } from "./onboarding";
 
-// Text alerts. Every alert row goes through openAlert(), which schedules
-// textAlert() to run right after the mutation commits: it works out who to
-// text (lib/notify/plan.ts), sends through Twilio, and logs each attempt to
-// `textMessages`. Without Twilio env vars it's a dry run: texts are logged
-// as "skipped" so the hub still shows what would have gone out.
+// Text alerts. convex/alerts.ts raiseAlert() schedules textAlert() for every
+// new care-team alert (not the band's own spoken prompts): it works out who to
+// text (lib/notify/plan.ts, honouring each member's preferences), sends through
+// Twilio, and logs each attempt to `textMessages`. Without Twilio env vars it's
+// a dry run: texts are logged as "skipped" so the hub still shows what would
+// have gone out.
 // TODO(auth): `userId` is the demo identity; see convex/onboarding.ts.
 
 const RECENT_TEXTS = 8;
 const DRY_RUN = "Texting isn't set up yet (no Twilio env vars on this Convex deployment)";
-
-type AlertTier = Doc<"alerts">["tier"];
-
-/** Insert an alert and text the care team about it. Use this instead of inserting into `alerts` directly. */
-export async function openAlert(
-  ctx: MutationCtx,
-  { patientId, tier, reason }: { patientId: Id<"patients">; tier: AlertTier; reason: string },
-): Promise<Id<"alerts">> {
-  const alertId = await ctx.db.insert("alerts", {
-    patientId,
-    tier,
-    reason,
-    createdAt: Date.now(),
-    status: "open",
-  });
-  await ctx.scheduler.runAfter(0, internal.notify.textAlert, { alertId });
-  return alertId;
-}
 
 export function textable(m: Doc<"careTeamMembers">): TextableMember {
   return {

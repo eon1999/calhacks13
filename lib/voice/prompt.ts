@@ -111,6 +111,18 @@ function describeLastCheckIn(ctx: PatientContext): string {
   return `Last check-in at ${when}: ${describeCheckIn(c)}.`;
 }
 
+/** Earlier check-ins, so the agent can follow up ("your knee was a 6 yesterday"). */
+function describeMemory(ctx: PatientContext): string {
+  const past = ctx.recentCheckIns ?? [];
+  if (past.length === 0) return "";
+  const day = (ms: number) =>
+    new Intl.DateTimeFormat("en-US", { timeZone: ctx.patient.timeZone, weekday: "long" }).format(new Date(ms));
+  const lines = [...past]
+    .sort((a, b) => a.at - b.at)
+    .map((c) => `- ${day(c.at)} ${formatLocalTime(ctx.patient.timeZone, c.at)}: ${describeCheckIn(c)}`);
+  return `\nEarlier check-ins this week (memory; follow up gently when it helps, e.g. compare pain to before, but don't recite them):\n${lines.join("\n")}\n`;
+}
+
 function describeDoneToday(ctx: PatientContext): string {
   const at = (ms: number) => formatLocalTime(ctx.patient.timeZone, ms);
   const lines = [
@@ -148,7 +160,7 @@ Today's medication schedule (status is one of upcoming, due, taken, missed):
 ${describeSchedule(ctx)}
 
 ${describeLastCheckIn(ctx)}
-
+${describeMemory(ctx)}
 Done today:
 ${describeDoneToday(ctx)}`;
 }

@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
-import { MyNotifications } from "@/components/notify/my-notifications";
+import { SettingsPage } from "@/components/settings/settings-page";
 
 export const metadata: Metadata = {
-  title: "My notifications · Cadence",
-  robots: { index: false },
+  title: "Settings · Cadence",
+  description: "Medicines and schedule, care team and permissions, devices and tokens.",
 };
 
-// Caregivers and family reach their notification settings here without the hub.
-export default function SettingsPage() {
+export default function Page() {
   return (
     <ConvexClientProvider>
-      <MyNotifications />
+      <SettingsPage />
     </ConvexClientProvider>
   );
 }

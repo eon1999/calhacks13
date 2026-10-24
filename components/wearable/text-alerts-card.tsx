@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DemoIdentityPicker } from "@/components/notify/demo-identity-picker";
 import { PreferencesEditor } from "@/components/notify/preferences-editor";
 import { useDemoIdentity } from "@/components/onboarding/use-demo-identity";
 import { toE164 } from "@/lib/notify/phone";
@@ -106,10 +105,11 @@ export function TextAlertsCard({ patientId }: TextAlertsCardProps) {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {overview === null && (
-          <div className="space-y-2 text-sm">
-            <p className="text-muted-foreground">Only the patient&apos;s care team can see this.</p>
-            <DemoIdentityPicker tone="plain" />
-          </div>
+          <p className="text-muted-foreground">
+            Only the patient&apos;s care team can see this. Open it in the browser that ran{" "}
+            <a href="/start" className="underline">setup</a>, or manage everyone&apos;s texts in{" "}
+            <a href="/settings" className="underline">settings</a>.
+          </p>
         )}
 
         {overview?.urgentGap && (

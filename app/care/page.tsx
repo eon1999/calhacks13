@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
-import { CareToday } from "@/components/care/care-today";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
+import { CareDashboard } from "@/components/care/care-dashboard";
 
 export const metadata: Metadata = {
-  title: "Today · Cadence",
-  robots: { index: false },
+  title: "Care dashboard · Cadence",
+  description: "Live alerts, doses, check-ins and movement for the person you care for.",
 };
 
-// Family and caregivers land here after joining (components/onboarding/join-flow.tsx).
 export default function CarePage() {
   return (
     <ConvexClientProvider>
-      <CareToday />
+      <CareDashboard />
     </ConvexClientProvider>
   );
 }

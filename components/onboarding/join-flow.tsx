@@ -12,7 +12,7 @@ import { ErrorNote, errorText, Field, OnboardingShell, PrimaryButton, StepHeadin
 import { useDemoIdentity } from "./use-demo-identity";
 
 function landingFor(role: CareRole, patientId: Id<"patients">): string {
-  // /care is the family and caregiver "today" page; the patient also lands there until they get their own view.
+  // /care is the care dashboard; the patient also lands there until they get their own view.
   return role === "clinician" ? `/clinician/${patientId}` : "/care";
 }
 

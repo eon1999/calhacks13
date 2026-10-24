@@ -2,24 +2,17 @@
 
 import Link from "next/link";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { AuthControls } from "@/components/auth/auth-controls";
 import { Wordmark } from "@/components/landing/wordmark";
 
 // Form primitives for onboarding, in the landing page's lilac/plum language:
 // display-serif headlines, mono labels, glass pill buttons.
 
-export function OnboardingShell({
-  aside,
-  children,
-  label = "Setup",
-}: {
-  aside?: ReactNode;
-  children: ReactNode;
-  label?: string;
-}) {
+export function OnboardingShell({ aside, children }: { aside?: ReactNode; children: ReactNode }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-lilac text-plum print:min-h-0 print:overflow-visible print:bg-white">
+    <div className="relative min-h-screen overflow-hidden bg-lilac text-plum">
       {/* soft dusk clouds, echoing the landing sky */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 print:hidden">
+      <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="absolute -left-[10%] -top-[10%] h-[50vh] w-[55vw] rounded-full bg-[#e3c9fb]/70 blur-[90px]" />
         <div className="absolute -right-[8%] top-[30%] h-[45vh] w-[40vw] rounded-full bg-[#f6d3f3]/60 blur-[90px]" />
         <div className="absolute bottom-[-20%] left-[25%] h-[40vh] w-[50vw] rounded-full bg-[#c9b0f5]/40 blur-[100px]" />
@@ -29,11 +22,14 @@ export function OnboardingShell({
         <Link href="/" aria-label="Cadence home" className="text-3xl">
           <Wordmark />
         </Link>
-        <span className="mono-label text-plum-muted">{label}</span>
+        <div className="flex items-center gap-3">
+          <span className="mono-label text-plum-muted">Setup</span>
+          <AuthControls />
+        </div>
       </header>
 
-      <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-24 md:grid-cols-[220px_1fr] md:px-10 md:pt-6 print:block print:max-w-none print:p-0">
-        {aside ? <aside className="print:hidden">{aside}</aside> : <div className="print:hidden" />}
+      <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-24 md:grid-cols-[220px_1fr] md:px-10 md:pt-6">
+        {aside ? <aside>{aside}</aside> : <div />}
         <main>{children}</main>
       </div>
     </div>

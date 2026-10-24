@@ -11,6 +11,8 @@ export const wearableEvent = z.enum([
   "fall",
   "sos",
   "first_boot",
+  "lid_opened", // pillbox opened during a dose window
+  "extra_opening", // pillbox opened again after a taken dose
 ]);
 export type WearableEvent = z.infer<typeof wearableEvent>;
 
@@ -22,6 +24,8 @@ export const EVENT_LABELS: Record<WearableEvent, string> = {
   fall: "Possible fall detected",
   sos: "SOS button pressed",
   first_boot: "First time on the wrist",
+  lid_opened: "Pillbox opened",
+  extra_opening: "Pillbox opened again",
 };
 
 /** Events that are also logged to the `events` table for the care team. */
@@ -53,6 +57,14 @@ export function dueSlots(slots: DoseSlot[]): DoseSlot[] {
  */
 export function slotsForEvent(event: WearableEvent, slots: DoseSlot[]): DoseSlot[] {
   if (event === "missed_dose") return slots.filter((s) => s.status === "missed");
+  if (event === "extra_opening") return slots.filter((s) => s.status === "taken");
+  if (event === "lid_opened") {
+    // The dose the box was opened for: due now, else the latest one not yet confirmed.
+    const due = dueSlots(slots);
+    if (due.length) return due;
+    const latest = slots.filter((s) => s.status === "missed").at(-1);
+    return latest ? slots.filter((s) => s.scheduledFor === latest.scheduledFor && s.status !== "taken") : [];
+  }
   if (event !== "dose_due") return [];
 
   const due = dueSlots(slots);
@@ -87,6 +99,14 @@ export function describeEvent(event: WearableEvent, slots: DoseSlot[]): string {
       return "[Wearable event] Possible fall detected by the wristband. Ask right away if they are OK and whether they need help.";
     case "sos":
       return "[Wearable event] The patient pressed the SOS button on the wristband. Alert the care team as urgent right away, tell them help is being notified, and ask what's happening.";
+    case "lid_opened":
+      return slots.length
+        ? `[Wearable event] The pillbox was just opened for: ${listSlots(slots)}. Opening isn't the same as taking. Ask simply whether they've taken them, and call mark_dose_taken only when they say yes.`
+        : "[Wearable event] The pillbox was just opened, but no dose is due. Ask kindly if they need anything; don't suggest taking extra medicine.";
+    case "extra_opening":
+      return slots.length
+        ? `[Wearable event] The pillbox was opened again, but these doses were already taken today: ${listSlots(slots)}. Gently remind them they've already had this dose, and that their care team can help if they're unsure. Never tell them to take more. Don't block or scold.`
+        : "[Wearable event] The pillbox was opened again after a dose was already taken. Gently remind them they've already had it. Never tell them to take more.";
     case "first_boot":
       return "[Wearable event] The band was just paired and put on for the first time. Introduce yourself in one sentence, then ask whether it's okay for you to let the people listed under Care team know if they fall, miss medicine, or seem unwell, naming those people. When they answer, call record_consent.";
   }

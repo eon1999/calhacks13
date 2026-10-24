@@ -3,11 +3,12 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { toE164 } from "../lib/notify/phone";
 import { MAX_HEALTH_ITEMS, mobilityId } from "../lib/onboarding/health";
+import { resolveUserId } from "./identity";
 
 // Family-led onboarding: the owner creates the patient, adds meds, pairs the
 // band (convex/pairing.ts) and invites the care team (convex/invites.ts).
-// TODO(auth): `userId` is a client-supplied demo identity. Swap it for
-// `ctx.auth.getUserIdentity()` once Clerk is wired up.
+// `userId` is the client's identity; convex/identity.ts replaces it with the
+// Clerk user when the caller is signed in.
 
 const MAX_TEXT = 200;
 const MAX_NOTES = 1000;
@@ -92,8 +93,9 @@ function cleanPatient(args: {
 export async function membership(
   ctx: QueryCtx,
   patientId: Id<"patients">,
-  userId: string,
+  claimedUserId: string,
 ): Promise<Doc<"careTeamMembers"> | null> {
+  const userId = await resolveUserId(ctx, claimedUserId);
   const members = await ctx.db
     .query("careTeamMembers")
     .withIndex("by_patient", (q) => q.eq("patientId", patientId))
@@ -122,7 +124,8 @@ export const createPatient = mutation({
     relationship: v.optional(v.string()),
     ...patientInput,
   },
-  handler: async (ctx, { userId, ownerName, ownerPhone, relationship, ...patient }) => {
+  handler: async (ctx, { userId: claimed, ownerName, ownerPhone, relationship, ...patient }) => {
+    const userId = await resolveUserId(ctx, claimed);
     const patientId = await ctx.db.insert("patients", {
       ...cleanPatient(patient),
       ownerUserId: text(userId, "User"),

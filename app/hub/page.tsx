@@ -1,3 +1,4 @@
+import { AuthControls } from "@/components/auth/auth-controls";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { Sky } from "@/components/landing/sky";
 import { HubDemo } from "@/components/wearable/hub-demo";
@@ -14,6 +15,9 @@ export default function HubPage() {
       </div>
 
       <div className="relative z-10 mx-auto max-w-6xl px-5 py-10 md:px-10">
+        <div className="mb-4 flex justify-end">
+          <AuthControls tone="dark" />
+        </div>
         <ConvexClientProvider>
           <HubDemo />
         </ConvexClientProvider>

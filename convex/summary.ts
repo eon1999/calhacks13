@@ -12,8 +12,10 @@ import { membership } from "./onboarding";
 // Daily recovery summary texts for the family. convex/crons.ts runs
 // sendDueSummaries every 15 minutes; each member with the daily summary on
 // gets one text at their own summary time (patient's time zone), at most once
-// a day. Composed by rules (lib/summary/daily.ts), stored in `summaries`,
-// sent and logged like alert texts (dry run without Twilio).
+// a day. Composed by rules (lib/summary/daily.ts) to fit an SMS, stored in
+// `summaries` as kind "daily_sms" (the dashboard's longer Claude summary is
+// kind "daily", convex/ai.ts), sent and logged like alert texts (dry run
+// without Twilio).
 
 const DAY_MS = 86_400_000;
 
@@ -112,7 +114,7 @@ export const prepareSummary = internalMutation({
     const preview = composeDailySummary(input);
     const summaryId = await ctx.db.insert("summaries", {
       patientId,
-      kind: "daily",
+      kind: "daily_sms",
       periodStart: start,
       periodEnd: now,
       body: preview,
