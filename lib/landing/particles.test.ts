@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   SHAPES,
-  heartbeat,
   makeShape,
   project,
   repel,
@@ -19,14 +18,16 @@ describe("makeShape", () => {
   });
 
   it("is deterministic for the same shape and count", () => {
-    expect(makeShape("torus", 50)).toEqual(makeShape("torus", 50));
+    expect(makeShape("ecg", 50)).toEqual(makeShape("ecg", 50));
   });
 
-  it("torus leaves its centre empty (it reads as a band)", () => {
-    const pts = makeShape("torus", 800);
-    for (let i = 0; i < pts.length; i += 3) {
-      expect(Math.hypot(pts[i], pts[i + 1])).toBeGreaterThan(0.5);
-    }
+  it("ecg reads as a heartbeat trace: flat baseline with tall spikes", () => {
+    const pts = makeShape("ecg", 2000);
+    const ys: number[] = [];
+    for (let i = 1; i < pts.length; i += 3) ys.push(pts[i]);
+    const sorted = [...ys].map(Math.abs).sort((a, b) => a - b);
+    expect(sorted[Math.floor(sorted.length / 2)]).toBeLessThan(0.12); // mostly baseline
+    expect(Math.min(...ys)).toBeLessThan(-0.8); // R peaks point up (screen y is down)
   });
 });
 
@@ -63,19 +64,5 @@ describe("springStep", () => {
     let s = { offset: 50, velocity: 0 };
     for (let i = 0; i < 400; i++) s = springStep(s.offset, s.velocity, 0, 0.06, 0.86);
     expect(Math.abs(s.offset)).toBeLessThan(0.01);
-  });
-});
-
-describe("heartbeat", () => {
-  it("stays within 0..1 and peaks twice per beat (lub-dub)", () => {
-    const samples = Array.from({ length: 200 }, (_, i) => heartbeat(i / 200));
-    for (const v of samples) {
-      expect(v).toBeGreaterThanOrEqual(0);
-      expect(v).toBeLessThanOrEqual(1);
-    }
-    const peaks = samples.filter(
-      (v, i) => i > 0 && i < 199 && v > 0.3 && v > samples[i - 1] && v >= samples[i + 1],
-    );
-    expect(peaks).toHaveLength(2);
   });
 });

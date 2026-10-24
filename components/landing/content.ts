@@ -1,8 +1,7 @@
 import type { ShapeName } from "@/lib/landing/particles";
 
-/** One line of a display headline: optional ↪ indent, italic lead-in, uppercase text. */
+/** One line of a display headline: italic lead-in, uppercase text, optional italic tail. */
 export interface HeadlineLine {
-  arrow?: boolean;
   em?: string;
   text?: string;
   emAfter?: string;
@@ -17,12 +16,12 @@ export interface StoryBeat {
 }
 
 export const HERO = {
-  shape: "torus" as ShapeName,
+  shape: "ecg" as ShapeName,
   kicker: "A voice wristband for people living with Parkinson's",
   lines: [
     { em: "Care", text: "that" },
     { text: "keeps time" },
-    { arrow: true, text: "with you" },
+    { text: "with you" },
   ] satisfies HeadlineLine[],
 };
 
@@ -31,21 +30,21 @@ export const STORY: StoryBeat[] = [
     id: "reminds",
     shape: "capsule",
     tag: "Reminds",
-    lines: [{ em: "It", text: "reminds you" }, { arrow: true, text: "before it's" }, { text: "too late" }],
+    lines: [{ em: "It", text: "reminds you" }, { text: "before it's" }, { text: "too late" }],
     sub: "Every dose, on time and out loud. Gentle, never nagging, and it knows a missed dose from a late one.",
   },
   {
     id: "listens",
     shape: "wave",
     tag: "Listens",
-    lines: [{ text: "Listens" }, { arrow: true, em: "in", text: "plain words" }],
+    lines: [{ text: "Listens" }, { em: "in", text: "plain words" }],
     sub: "Tap the band and talk. It checks in on how you're moving, sleeping and feeling, and remembers so you don't have to.",
   },
   {
     id: "cares",
     shape: "heart",
     tag: "Cares",
-    lines: [{ text: "Speaks up", emAfter: "when" }, { arrow: true, text: "it matters" }],
+    lines: [{ text: "Speaks up", emAfter: "when" }, { text: "it matters" }],
     sub: "Falls, missed doses and red flags reach your care team in seconds, with the context they need to help.",
   },
   {

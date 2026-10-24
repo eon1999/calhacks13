@@ -2,7 +2,7 @@
 // story beat, perspective projection, and the cursor push/spring-back physics.
 // The renderer (components/landing/particle-field.tsx) owns the frame loop.
 
-export const SHAPES = ["torus", "capsule", "wave", "heart", "sphere"] as const;
+export const SHAPES = ["ecg", "capsule", "wave", "heart", "sphere"] as const;
 export type ShapeName = (typeof SHAPES)[number];
 
 export interface Stage {
@@ -50,13 +50,34 @@ function hash(name: string): number {
   return h >>> 0;
 }
 
-// The wristband: a ring lying in the xy plane, tilted later by the renderer.
-const torus: PointFn = (rand) => {
-  const u = rand() * Math.PI * 2;
-  const v = rand() * Math.PI * 2;
-  const r = 0.3 * Math.sqrt(rand());
-  const ring = 1 + r * Math.cos(v);
-  return [ring * Math.cos(u), ring * Math.sin(u), r * Math.sin(v)];
+// One heartbeat as an ECG trace (x, y) over u in [0, 1]: P wave, QRS spike, T wave.
+// Screen y points down, so the R peak is negative.
+const BEAT: [number, number][] = [
+  [0, 0], [0.08, 0], [0.13, -0.12], [0.18, 0], [0.28, 0], [0.31, 0.12], [0.36, -0.95],
+  [0.41, 0.32], [0.45, 0], [0.58, 0], [0.66, -0.24], [0.74, 0], [1, 0],
+];
+const BEATS = 2;
+const TRACE: [number, number][] = Array.from({ length: BEATS }, (_, b) =>
+  BEAT.slice(b === 0 ? 0 : 1).map(([u, y]): [number, number] => [-1.4 + ((b + u) / BEATS) * 2.8, y]),
+).flat();
+const TRACE_LEN: number[] = TRACE.reduce<number[]>((acc, p, i) => {
+  const prev = i === 0 ? 0 : acc[i - 1] + Math.hypot(p[0] - TRACE[i - 1][0], (p[1] - TRACE[i - 1][1]) * 0.4);
+  return [...acc, prev];
+}, []);
+
+// The heartbeat line: particles spread along the trace by arc length, with
+// vertical travel weighted down (0.4) so the baseline stays solid instead of
+// most particles piling onto the tall spikes.
+const ecg: PointFn = (rand) => {
+  const d = rand() * TRACE_LEN[TRACE_LEN.length - 1];
+  let i = 1;
+  while (i < TRACE_LEN.length - 1 && TRACE_LEN[i] < d) i++;
+  const t = (d - TRACE_LEN[i - 1]) / (TRACE_LEN[i] - TRACE_LEN[i - 1] || 1);
+  const x = TRACE[i - 1][0] + (TRACE[i][0] - TRACE[i - 1][0]) * t;
+  const y = TRACE[i - 1][1] + (TRACE[i][1] - TRACE[i - 1][1]) * t;
+  const spread = 0.045 * Math.sqrt(rand());
+  const angle = rand() * Math.PI * 2;
+  return [x + Math.cos(angle) * spread * 0.5, y + Math.sin(angle) * spread, (rand() - 0.5) * 0.18];
 };
 
 // A medication capsule: cylinder with hemispherical caps, laid diagonally.
@@ -107,7 +128,7 @@ const sphere: PointFn = (rand) => {
   return [r * s * Math.cos(phi), r * u, r * s * Math.sin(phi)];
 };
 
-const GENERATORS: Record<ShapeName, PointFn> = { torus, capsule, wave, heart, sphere };
+const GENERATORS: Record<ShapeName, PointFn> = { ecg, capsule, wave, heart, sphere };
 
 /** Interleaved xyz coordinates for `count` particles, roughly within the unit ball. */
 export function makeShape(shape: ShapeName, count: number): Float32Array {
@@ -147,12 +168,4 @@ export function springStep(
 ): Spring {
   const v = (velocity + force - offset * stiffness) * damping;
   return { offset: offset + v, velocity: v };
-}
-
-/** Lub-dub pulse for a beat phase in [0, 1). Returns 0..1. */
-export function heartbeat(phase: number): number {
-  const p = phase - Math.floor(phase);
-  const lub = Math.exp(-(((p - 0.1) / 0.035) ** 2));
-  const dub = 0.6 * Math.exp(-(((p - 0.28) / 0.04) ** 2));
-  return Math.min(1, lub + dub);
 }

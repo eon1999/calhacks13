@@ -7,7 +7,7 @@ interface GlassButtonProps {
   className?: string;
 }
 
-/** Pill CTA with the gradient hairline; the ↪ nudges on hover. */
+/** Pill CTA with the gradient hairline; the → nudges on hover. */
 export function GlassButton({ href, children, className = "" }: GlassButtonProps) {
   return (
     <Link
@@ -16,7 +16,7 @@ export function GlassButton({ href, children, className = "" }: GlassButtonProps
     >
       {children}
       <span aria-hidden className="transition-transform duration-300 group-hover:translate-x-1">
-        ↪
+        →
       </span>
     </Link>
   );

@@ -10,7 +10,7 @@ const ROW = 56;
 
 /**
  * "What it does": a pinned section whose right column is a scroll-driven wheel
- * of capabilities. The row at the centre is lit and marked with ↪; hovering
+ * of capabilities. The row at the centre is lit and marked with →; hovering
  * a row also selects it.
  */
 export function FeatureWheel() {
@@ -56,7 +56,7 @@ export function FeatureWheel() {
             data-split
             className="mt-6 max-w-[22ch] font-display text-[clamp(1.9rem,3.4vw,3.2rem)] leading-[1.02] tracking-tight"
           >
-            ↪ Cadence lives on the wrist and in the cloud. It reminds, listens and speaks up, then gives everyone the
+            Cadence lives on the wrist and in the cloud. It reminds, listens and speaks up, then gives everyone the
             same clear picture of the day.
           </p>
           <div data-fade className="mt-8">
@@ -80,11 +80,11 @@ export function FeatureWheel() {
                   className="flex cursor-default items-center justify-between border-b border-plum/5 transition-opacity duration-500"
                 >
                   <span className="mono-label w-16 text-plum-muted">
-                    {d === 0 ? <span className="text-lg text-plum">↪</span> : `(${String(i + 1).padStart(3, "0")})`}
+                    {d === 0 ? <span className="text-lg text-plum">→</span> : `(${String(i + 1).padStart(3, "0")})`}
                   </span>
                   <span
                     className={`text-right text-[clamp(1.05rem,1.6vw,1.35rem)] transition-all duration-500 ${
-                      d === 0 ? "translate-x-0 text-plum" : "translate-x-2 text-plum-muted"
+                      d === 0 ? "translate-x-0 text-plum" : "-translate-x-2 text-plum-muted"
                     }`}
                   >
                     {f}

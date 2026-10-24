@@ -27,6 +27,12 @@ export function useReveal<T extends HTMLElement>({ when, delay = 0 }: RevealOpti
       splitText(node, { words: { wrap: "clip" } }),
     );
     const words = splits.flatMap((s) => s.words as HTMLElement[]);
+    // The clip wrapper is exactly one line tall, which shaves descenders and
+    // italic overhangs. Pad it out and cancel the padding with negative margin.
+    for (const w of words) {
+      const clip = w.parentElement;
+      if (clip) Object.assign(clip.style, { padding: "0 0.08em 0.18em", margin: "0 -0.08em -0.18em" });
+    }
     const fades = [...el.querySelectorAll<HTMLElement>("[data-fade]")];
     el.style.visibility = "visible";
 
@@ -34,7 +40,7 @@ export function useReveal<T extends HTMLElement>({ when, delay = 0 }: RevealOpti
       return () => splits.forEach((s) => s.revert());
     }
 
-    utils.set(words, { y: "110%" });
+    utils.set(words, { y: "135%" });
     utils.set(fades, { opacity: 0, y: 14 });
 
     const tl = createTimeline({ delay, autoplay: when === true })

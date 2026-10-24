@@ -56,7 +56,7 @@ function Hero({ ready, onActive }: { ready: boolean; onActive: OnActive }) {
             </span>
             Scroll to explore
           </span>
-          <span className="mono-label hidden md:inline">Move your cursor through the band</span>
+          <span className="mono-label hidden md:inline">Move your cursor through the heartbeat</span>
         </div>
       </div>
     </div>

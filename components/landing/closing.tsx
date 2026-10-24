@@ -7,7 +7,7 @@ import { Headline } from "./headline";
 import { useReveal } from "./use-reveal";
 import { Wordmark } from "./wordmark";
 
-const CTA_LINES = [{ em: "Let's", text: "keep" }, { arrow: true, text: "every day" }, { text: "in rhythm" }];
+const CTA_LINES = [{ em: "Let's", text: "keep" }, { text: "every day" }, { text: "in rhythm" }];
 
 const RESOURCES = [
   { href: "/hub", label: "Wearable simulator" },

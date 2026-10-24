@@ -4,7 +4,6 @@ import { useEffect, useRef, type Ref } from "react";
 import { animate, createTimer, type JSAnimation } from "animejs";
 import {
   SHAPES,
-  heartbeat,
   makeShape,
   project,
   repel,
@@ -23,7 +22,6 @@ interface ParticleFieldProps {
 
 // Near particles are brighter: deep violet at the back, white-pink at the front.
 const PALETTE = ["#5b23c7", "#8a3ffc", "#b26bff", "#e2b6ff", "#fff4fd"];
-const BEAT_MS = 1100;
 const PUSH_RADIUS = 140;
 const DUST_COUNT = 70;
 
@@ -43,11 +41,11 @@ function stageFor(width: number, height: number) {
 }
 
 /**
- * Full-bleed canvas of ~1.7k particles that hold a 3D shape, slowly rotate,
- * pulse to a heartbeat, scatter away from the cursor and spring back.
+ * Full-bleed canvas of ~2.4k particles that hold a 3D shape, sway gently,
+ * scatter away from the cursor and spring back.
  * `morphTo` re-forms them into another shape with a staggered tween.
  */
-export function ParticleField({ ref, initialShape = "torus" }: ParticleFieldProps) {
+export function ParticleField({ ref, initialShape = "ecg" }: ParticleFieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -91,7 +89,7 @@ export function ParticleField({ ref, initialShape = "torus" }: ParticleFieldProp
     let width = 0;
     let height = 0;
     let stage = stageFor(1, 1);
-    let spin = 0;
+    let elapsed = 0;
     let last = performance.now();
 
     const local = (i: number) => {
@@ -146,14 +144,15 @@ export function ParticleField({ ref, initialShape = "torus" }: ParticleFieldProp
       last = now;
       if (canvas.getBoundingClientRect().bottom <= 0) return;
 
-      spin += reduced ? 0 : dt * 0.00018;
+      elapsed += reduced ? 0 : dt;
       tilt.x += (pointer.ny * 0.35 - tilt.x) * 0.04;
       tilt.y += (pointer.nx * 0.5 - tilt.y) * 0.04;
-      const pulse = reduced ? 0 : heartbeat(now / BEAT_MS);
-      const scale = stage.scale * (1 + pulse * 0.035);
+      const scale = stage.scale;
 
-      const ay = spin + tilt.y;
-      const ax = 0.95 + tilt.x; // resting tilt shows the torus as a band, not a line
+      // A slow sway rather than a full spin, so flat shapes (the heartbeat
+      // line) never turn edge-on and disappear.
+      const ay = Math.sin(elapsed * 0.00035) * 0.45 + tilt.y;
+      const ax = 0.12 + Math.sin(elapsed * 0.00023) * 0.08 + tilt.x;
       const cy = Math.cos(ay);
       const sy = Math.sin(ay);
       const cx = Math.cos(ax);
@@ -161,9 +160,9 @@ export function ParticleField({ ref, initialShape = "torus" }: ParticleFieldProp
 
       ctx.clearRect(0, 0, width, height);
 
-      // Soft core glow that breathes with the pulse.
+      // Soft, steady core glow behind the shape.
       const glow = ctx.createRadialGradient(stage.cx, stage.cy, 0, stage.cx, stage.cy, scale * 1.5);
-      glow.addColorStop(0, `rgba(255, 228, 250, ${0.32 + pulse * 0.18})`);
+      glow.addColorStop(0, "rgba(255, 228, 250, 0.32)");
       glow.addColorStop(1, "rgba(255, 228, 250, 0)");
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, width, height);

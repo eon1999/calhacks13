@@ -53,7 +53,7 @@ First live end-to-end run with real Claude and Cartesia keys (keys live in `.env
 
 **Structure (top → bottom)**
 - **Loader**: wordmark letters rise in, and an "experience is loading" bar counts to 100%. Then it clip-wipes away and the hero reveals.
-- **Story stage** (`story-stage.tsx`): a sticky painted dusk sky (`sky.tsx`) plus a **particle canvas** (`particle-field.tsx`) behind the hero and 4 beats. Each beat **morphs** ~2.4k particles into its shape as it crosses mid-screen: torus (the band) → capsule (Reminds) → voice wave (Listens) → heart (Cares) → sphere (Our people). Particles spin, pulse to a lub-dub heartbeat, scatter from the cursor and spring back. The sky layers parallax with the pointer. A right-edge index shows the active beat.
+- **Story stage** (`story-stage.tsx`): a sticky painted dusk sky (`sky.tsx`) plus a **particle canvas** (`particle-field.tsx`) behind the hero and 4 beats. Each beat **morphs** ~2.4k particles into its shape as it crosses mid-screen: ECG heartbeat line → capsule (Reminds) → voice wave (Listens) → heart (Cares) → sphere (Our people). Particles sway gently (no full spin, so the flat heartbeat line never turns edge-on; no pulsing), scatter from the cursor and spring back. The sky layers parallax with the pointer. A right-edge index shows the active beat.
 - **What it does** (`feature-wheel.tsx`): a pinned scroll wheel of capabilities. The centred row is lit with ↪, and hovering selects a row.
 - **Some / of the / surfaces** (`surfaces.tsx`): tilt-on-hover cards linking to `/hub`, `/care`, `/demo`, `/settings`.
 - **A day with Cadence** (`day-timeline.tsx`): an awards-table-style ledger of a day's moments.
@@ -70,6 +70,8 @@ First live end-to-end run with real Claude and Cartesia keys (keys live in `.env
 
 **Notes / open**
 - Emotion's display serif is proprietary, so **Instrument Serif** stands in. Their 3D WebGL landscape is approximated with 2D canvas plus layered SVG.
+- Gotcha: tokens in `@theme inline` are **not** emitted as CSS variables. Hand-written CSS in `globals.css` must use the next/font vars (`--font-instrument-serif`, `--font-plex-mono`) or literal values, not `var(--font-display)` / `var(--color-violet)`.
+- Headlines are plain italic + uppercase lines; the ↪ indents were removed by request.
 - `prefers-reduced-motion` is respected: the loader is skipped, there is no spin or pulse, morphs are instant, and text shows without animation.
 - Triggers use IntersectionObserver rather than anime's `onScroll`. It's simpler, and it behaves identically under React StrictMode's double-mount.
 - Not yet checked on a real phone. Mobile layout centres the shape higher and uses fewer particles (1.1k).
