@@ -59,9 +59,10 @@ function playWav(blob: Blob): Promise<void> {
 /**
  * Client for the wearable voice endpoints (/api/voice/*).
  * `patientId` is the patient the band is paired to; without one the demo's first patient is used.
+ * `null` means no patient has been chosen yet (the /hub demo creates one), so it loads nothing.
  * With `enabled` false it loads no patient (and so never polls), e.g. an unpaired band in the demo view.
  */
-export function useVoiceAgent(patientId?: string, enabled = true) {
+export function useVoiceAgent(patientId?: string | null, enabled = true) {
   const [patient, setPatient] = useState<PatientInfo | null>(null);
   const [slots, setSlots] = useState<DoseSlot[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -82,6 +83,13 @@ export function useVoiceAgent(patientId?: string, enabled = true) {
   }, []);
 
   const refresh = useCallback(async () => {
+    // null: no patient chosen yet (the /hub demo creates one), so don't fall back to the first patient.
+    if (patientId === null) {
+      setPatient(null);
+      setSlots([]);
+      setLoadError(null);
+      return;
+    }
     const query = patientId ? `?patientId=${encodeURIComponent(patientId)}` : "";
     const res = await fetch(`/api/voice/patient${query}`, { cache: "no-store" });
     if (!res.ok) {

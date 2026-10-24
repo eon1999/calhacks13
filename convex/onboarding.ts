@@ -51,7 +51,7 @@ export function optionalPhone(value: string | undefined): string | undefined {
   return phone;
 }
 
-function validTimeZone(timeZone: string): string {
+export function validTimeZone(timeZone: string): string {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone });
     return timeZone;

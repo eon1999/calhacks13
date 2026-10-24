@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback } from "react";
 import { BandViewer } from "./band-viewer";
 import { HubNowCard } from "./hub-now-card";
 import { PatientOnboarding } from "./patient-onboarding";
 import { SafetyCard } from "./safety-card";
 import { useBandPairing } from "./use-band-pairing";
+import { useHubPatient } from "./use-hub-patient";
 import { useHubPrompts } from "./use-hub-prompts";
 import { useVoiceAgent } from "./use-voice-agent";
 import { WearableSimulator, type SimulatorMode } from "./wearable-simulator";
@@ -21,10 +23,22 @@ export function HubDemo({ mode = "debug" }: { mode?: SimulatorMode }) {
   const band = useBandPairing();
   const pairedTo = band.pairing.state === "paired" ? band.pairing.patientId : undefined;
   const live = pairedTo !== undefined || mode === "debug";
-  // Once paired, the band talks to its own patient; until then (debug only), the demo patient.
-  const agent = useVoiceAgent(pairedTo, live);
+  // Once paired, the band talks to its own patient. Until then (debug only), the
+  // patient created on this page (remembered in the browser); there's no
+  // fallback to the first patient, so until one is created there's none.
+  const hubPatient = useHubPatient();
+  const agent = useVoiceAgent(pairedTo ?? (hubPatient.restored ? hubPatient.patientId : null), live);
   // Speak reminders, fall checks and other prompts the server raises.
   const prompts = useHubPrompts(agent);
+  const { newConversation } = agent;
+  const { choose } = hubPatient;
+  const switchTo = useCallback(
+    (id: string | null) => {
+      choose(id);
+      newConversation();
+    },
+    [choose, newConversation],
+  );
 
   return (
     <>
@@ -66,12 +80,16 @@ export function HubDemo({ mode = "debug" }: { mode?: SimulatorMode }) {
         </section>
         <section className="md:pt-10">
           {mode === "debug" ? (
-            <PatientOnboarding
-              patientId={agent.patient?.id}
-              loadError={agent.loadError}
-              onSeed={agent.seed}
-              onMedsChanged={agent.refresh}
-            />
+            hubPatient.restored && (
+              <PatientOnboarding
+                key={agent.patient?.id ?? "new"}
+                patientId={agent.patient?.id}
+                loadError={agent.loadError}
+                onCreated={switchTo}
+                onNewPatient={() => switchTo(null)}
+                onMedsChanged={agent.refresh}
+              />
+            )
           ) : (
             <p className="max-w-[40ch] text-xl leading-snug text-white/90">
               Talk to it like the person wearing it would. When something sounds wrong, the family gets a text.
@@ -80,27 +98,34 @@ export function HubDemo({ mode = "debug" }: { mode?: SimulatorMode }) {
         </section>
       </div>
 
-      <section className="mt-12 space-y-4">
-        {live && (
-          <div className="mx-auto max-w-5xl space-y-3">
-            <HubNowCard agent={agent} />
-            <SafetyCard patientId={agent.patient?.id} />
-            <label className="flex items-center gap-3 text-base text-white">
-              <input
-                type="checkbox"
-                className="size-5"
-                checked={prompts.enabled}
-                onChange={(e) => prompts.setEnabled(e.target.checked)}
-              />
-              Speak reminders and check-ins from Cadence automatically
-              {prompts.pending.length > 0 && <span className="mono-label text-white/70">({prompts.pending.length} waiting)</span>}
-            </label>
+      {mode === "debug" && !agent.patient ? (
+        <p className="mono-label mt-12 text-center text-white/80">Create a patient above to start the band.</p>
+      ) : (
+        // In demo mode the simulator shows even before pairing: it holds the pairing code.
+        <section className="mt-12 space-y-4">
+          {live && (
+            <div className="mx-auto max-w-5xl space-y-3">
+              <HubNowCard agent={agent} />
+              <SafetyCard patientId={agent.patient?.id} />
+              <label className="flex items-center gap-3 text-base text-white">
+                <input
+                  type="checkbox"
+                  className="size-5"
+                  checked={prompts.enabled}
+                  onChange={(e) => prompts.setEnabled(e.target.checked)}
+                />
+                Speak reminders and check-ins from Cadence automatically
+                {prompts.pending.length > 0 && (
+                  <span className="mono-label text-white/70">({prompts.pending.length} waiting)</span>
+                )}
+              </label>
+            </div>
+          )}
+          <div className="cadence-theme">
+            <WearableSimulator band={band} agent={agent} mode={mode} />
           </div>
-        )}
-        <div className="cadence-theme">
-          <WearableSimulator band={band} agent={agent} mode={mode} />
-        </div>
-      </section>
+        </section>
+      )}
     </>
   );
 }

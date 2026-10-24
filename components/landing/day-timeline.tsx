@@ -9,8 +9,9 @@ const TOTAL = DAY.reduce((n, d) => n + d.moments.length, 0);
 export function DayTimeline() {
   const root = useReveal<HTMLElement>({ when: "scroll" });
 
+  // `relative` so this paints over the hero's sticky sky, which overhangs its section by one screen.
   return (
-    <section ref={root} className="invisible bg-lilac px-5 pb-28 text-plum md:px-10 md:pb-40">
+    <section ref={root} className="invisible relative bg-lilac px-5 py-28 text-plum md:px-10 md:py-40">
       <h2 data-split className="display text-[clamp(3rem,7vw,7rem)]">
         A day <em>with</em> Cadence
       </h2>

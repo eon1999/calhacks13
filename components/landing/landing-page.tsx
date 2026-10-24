@@ -1,29 +1,22 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import { Closing } from "./closing";
 import { CursorGlow } from "./cursor-glow";
 import { DayTimeline } from "./day-timeline";
-import { FeatureWheel } from "./feature-wheel";
-import { Loader } from "./loader";
 import { PillNav } from "./pill-nav";
 import { StoryStage } from "./story-stage";
-import { Surfaces } from "./surfaces";
 
+// Trimmed for demo day: hero + 3 story beats, the day timeline, and the closing
+// CTA. Loader, FeatureWheel ("What it does") and Surfaces ("Some of the
+// surfaces") still exist in this folder; add one back here to restore it.
 export function LandingPage() {
-  const [ready, setReady] = useState(false);
-  const onLoaded = useCallback(() => setReady(true), []);
-
   return (
     <main className="relative bg-lilac">
-      <Loader onDone={onLoaded} />
       <CursorGlow />
-      <StoryStage ready={ready} />
-      <FeatureWheel />
-      <Surfaces />
+      <StoryStage ready />
       <DayTimeline />
       <Closing />
-      <PillNav visible={ready} />
+      <PillNav visible />
     </main>
   );
 }

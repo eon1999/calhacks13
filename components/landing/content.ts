@@ -47,13 +47,6 @@ export const STORY: StoryBeat[] = [
     lines: [{ em: "So", text: "you don't" }, { text: "have to call" }, { text: "and ask" }],
     sub: "Every dose on time and out loud, and a friendly check-in on pain, sleep and getting around. No more “did you take your pills?” calls.",
   },
-  {
-    id: "people",
-    shape: "sphere",
-    tag: "Our people",
-    lines: [{ em: "We" }, { text: "build for" }, { text: "the whole" }, { text: "family" }],
-    sub: "For parents and partners home from surgery, the sons, daughters and aides who look after them, and the clinicians who follow their recovery.",
-  },
 ];
 
 export const FEATURES = [
