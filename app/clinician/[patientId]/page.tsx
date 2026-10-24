@@ -1,7 +1,16 @@
-export default function ClinicianPage() {
+"use client";
+
+import { use } from "react";
+import { ClinicianReport } from "@/components/clinician/clinician-report";
+import { ConvexClientProvider } from "@/components/convex-client-provider";
+import type { Id } from "@/convex/_generated/dataModel";
+
+// Printable observation report for the surgeon or clinician.
+export default function ClinicianPage({ params }: { params: Promise<{ patientId: string }> }) {
+  const { patientId } = use(params);
   return (
-    <main className="p-8">
-      <h1 className="text-3xl font-bold">Clinician report</h1>
-    </main>
+    <ConvexClientProvider>
+      <ClinicianReport patientId={patientId as Id<"patients">} />
+    </ConvexClientProvider>
   );
 }
