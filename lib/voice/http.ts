@@ -63,7 +63,10 @@ export function handleVoiceError(error: unknown, route: string): Response {
     error instanceof Anthropic.AnthropicError ||
     (error instanceof Error && error.message.includes("Could not resolve authentication method"))
   ) {
-    return jsonError(503, "Claude is not configured. Set ANTHROPIC_API_KEY in .env.local.");
+    return jsonError(
+      503,
+      "Claude is not configured. Set ANTHROPIC_API_KEY in .env.local or the Vercel project's Environment Variables.",
+    );
   }
   // Convex rejects malformed document ids with an ArgumentValidationError.
   if (error instanceof Error && /ArgumentValidationError|Invalid argument/.test(error.message)) {

@@ -22,7 +22,9 @@ export const TTS_SAMPLE_RATE = 16_000;
 export const TTS_SPEED = 0.9;
 
 // Upper bound on uploaded audio per turn (~60 s of 16 kHz PCM is ~2 MB).
-export const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
+// Kept under Vercel's 4.5 MB request-body limit so oversize uploads get our
+// 413 instead of an opaque platform error.
+export const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 
 export class ConfigError extends Error {
   constructor(message: string) {
@@ -33,7 +35,11 @@ export class ConfigError extends Error {
 
 function requireEnv(name: string): string {
   const value = process.env[name];
-  if (!value) throw new ConfigError(`${name} is not set. Add it to .env.local.`);
+  if (!value) {
+    throw new ConfigError(
+      `${name} is not set. Add it to .env.local, or to the Vercel project's Environment Variables.`,
+    );
+  }
   return value;
 }
 

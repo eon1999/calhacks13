@@ -5,6 +5,22 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-23: Vercel deployment notes
+
+No pipeline code depended on `.env.local`: `lib/voice/config.ts` reads `process.env` per request, so Vercel project env vars work as-is.
+
+**Set these in Vercel → Project Settings → Environment Variables (then redeploy):**
+`ANTHROPIC_API_KEY`, `CARTESIA_API_KEY`, `NEXT_PUBLIC_CONVEX_URL` (the **cloud** URL, after `npx convex deploy`), and optionally `CARTESIA_VOICE_ID` and `CADENCE_DEBUG=1`.
+
+**Changed:** `MAX_AUDIO_BYTES` 5 MB → 4 MB (Vercel rejects request bodies over 4.5 MB before our handler runs), and missing-config errors now mention Vercel env vars.
+
+**Gotchas**
+- Vercel builds with `NODE_ENV=production`, so the debug routes return 403 and the `/hub` debug panel errors unless `CADENCE_DEBUG=1` is set.
+- The Convex cloud deployment starts empty and needs its functions deployed (`npx convex deploy`) and a patient seeded.
+- `/api/demo/seed`, `/hub` and all Convex functions are still unauthenticated on a public URL.
+
+---
+
 ## 2026-10-23: Voice agent live test and fixes
 
 First live end-to-end run with real Claude and Cartesia keys (keys live in `.env`, which Next.js loads alongside `.env.local`). Exercised by direct API calls and by clicking through the `/hub` debug panel.
