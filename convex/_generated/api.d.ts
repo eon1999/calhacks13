@@ -8,14 +8,17 @@
  * @module
  */
 
+import type * as agent from "../agent.js";
 import type * as debug from "../debug.js";
 import type * as http from "../http.js";
 import type * as invites from "../invites.js";
 import type * as notify from "../notify.js";
 import type * as onboarding from "../onboarding.js";
 import type * as pairing from "../pairing.js";
+import type * as profile from "../profile.js";
 import type * as seed from "../seed.js";
 import type * as voice from "../voice.js";
+import type * as watchList from "../watchList.js";
 
 import type {
   ApiFromModules,
@@ -24,14 +27,17 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agent: typeof agent;
   debug: typeof debug;
   http: typeof http;
   invites: typeof invites;
   notify: typeof notify;
   onboarding: typeof onboarding;
   pairing: typeof pairing;
+  profile: typeof profile;
   seed: typeof seed;
   voice: typeof voice;
+  watchList: typeof watchList;
 }>;
 
 /**

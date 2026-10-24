@@ -236,6 +236,7 @@ export function useVoiceAgent(patientId?: string) {
   return {
     patient,
     slots,
+    refresh,
     loadError,
     status,
     setStatus,

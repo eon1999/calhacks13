@@ -9,9 +9,9 @@ import type { SlotStatus } from "@/lib/schedule";
 import { DebugPanel } from "./debug-panel";
 import { PairingCard } from "./pairing-card";
 import { TextAlertsCard } from "./text-alerts-card";
-import { useBandPairing } from "./use-band-pairing";
+import type { useBandPairing } from "./use-band-pairing";
 import { useRecorder } from "./use-recorder";
-import { useVoiceAgent, type AgentStatus } from "./use-voice-agent";
+import type { AgentStatus, useVoiceAgent } from "./use-voice-agent";
 
 const STATUS_TEXT: Record<AgentStatus, string> = {
   idle: "Tap to talk",
@@ -28,10 +28,13 @@ const SLOT_VARIANT: Record<SlotStatus, "default" | "secondary" | "outline" | "de
   missed: "destructive",
 };
 
-export function WearableSimulator() {
-  const band = useBandPairing();
-  // Once paired, the band talks to its own patient; until then, the demo patient.
-  const agent = useVoiceAgent(band.pairing.state === "paired" ? band.pairing.patientId : undefined);
+interface WearableSimulatorProps {
+  band: ReturnType<typeof useBandPairing>;
+  agent: ReturnType<typeof useVoiceAgent>;
+}
+
+/** The band's face, schedule and conversation. `band` and `agent` are shared with the rest of /hub. */
+export function WearableSimulator({ band, agent }: WearableSimulatorProps) {
   const recorder = useRecorder();
   const [typed, setTyped] = useState("");
 

@@ -1,3 +1,4 @@
+import { mobilityInfo } from "../onboarding/health";
 import { localDateKey, PHASES, procedureId, procedureLabel, recoveryStatus } from "../onboarding/recovery";
 import { formatLocalTime } from "../schedule";
 import type { CareTeamMember, PatientContext } from "./context";
@@ -12,6 +13,7 @@ What you do:
 - Medication reminders: when a dose is due, remind them which medicine and dose. When they say they took it, call mark_dose_taken for that slot, then confirm briefly. Never mark a dose taken unless they clearly said so. If they ask about the schedule, answer from the schedule below.
 - Check-ins: ask how they're feeling and getting around, guided by the recovery focus below. Ask for pain as a number from 0 to 10 when it comes up. Ask at most one or two follow-ups, then call record_check_in with your best assessment and a short note in their words.
 - Safety: if they report a fall, can't get up, chest pain, trouble breathing, choking, sudden confusion, heavy bleeding, or say they need help, call alert_care_team with tier "urgent", tell them their care team is being notified, and if it sounds life-threatening tell them to call 911 or press their emergency button. For non-urgent concerns (fever, a wound that looks red or is leaking, calf pain or swelling, pain much worse than before, low mood), use tier "notify". Missed doses are already visible to the care team; don't alert about them on their own.
+- If they ask who to call, name their emergency contacts listed below (and read the number if they want it). For anything life-threatening, 911 comes first.
 
 Actions:
 - Your tools act for real. The "Done today" list below is the source of truth for what has already been saved or sent, including in earlier conversations.
@@ -51,6 +53,15 @@ function describeAboutThem(ctx: PatientContext, now: number): string {
     lines.push(`Recovery focus right now: ${PHASES[status.phase].focus}`);
     if (p.recovery.careNotes) lines.push(`Care notes from the family: ${p.recovery.careNotes}`);
   }
+  if (p.health) {
+    const h = p.health;
+    if (h.conditions.length) lines.push(`Other health conditions: ${h.conditions.join(", ")}`);
+    if (h.noKnownAllergies) lines.push("Allergies: none known");
+    else if (h.allergies.length) lines.push(`Allergies: ${h.allergies.join(", ")}`);
+    const mobility = mobilityInfo(h.mobility)?.focus;
+    if (mobility) lines.push(`Getting around: ${mobility}`);
+    if (h.notes) lines.push(`Health notes from the family: ${h.notes}`);
+  }
   if (p.extraPatience) {
     lines.push("Speak extra slowly and simply: one question at a time, yes/no where you can, and repeat once if they seem unsure.");
   }
@@ -66,6 +77,12 @@ function describeCareTeam(ctx: PatientContext): string {
       return `- ${m.name} (${who}), ${gets}`;
     })
     .join("\n");
+}
+
+function describeEmergencyContacts(ctx: PatientContext): string {
+  const contacts = ctx.patient.emergencyContacts ?? [];
+  if (contacts.length === 0) return "- None listed.";
+  return contacts.map((c) => `- ${c.name}${c.relationship ? ` (${c.relationship})` : ""}: ${c.phone}`).join("\n");
 }
 
 function describeConsent(ctx: PatientContext): string {
@@ -123,6 +140,9 @@ ${describeAboutThem(ctx, now)}
 Care team:
 ${describeCareTeam(ctx)}
 ${describeConsent(ctx)}
+
+Emergency contacts:
+${describeEmergencyContacts(ctx)}
 
 Today's medication schedule (status is one of upcoming, due, taken, missed):
 ${describeSchedule(ctx)}

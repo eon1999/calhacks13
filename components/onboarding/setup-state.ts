@@ -7,6 +7,7 @@ export const STEPS = [
   { id: "you", label: "You" },
   { id: "patient", label: "Who it's for" },
   { id: "recovery", label: "Their recovery" },
+  { id: "health", label: "Their health" },
   { id: "meds", label: "Medicines" },
   { id: "band", label: "The band" },
   { id: "team", label: "Care team" },

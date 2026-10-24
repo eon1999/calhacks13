@@ -27,6 +27,25 @@ export default defineSchema({
         careNotes: v.optional(v.string()), // e.g. "no lifting over 10 lb"
       }),
     ),
+    health: v.optional(
+      v.object({
+        conditions: v.array(v.string()), // other conditions besides the surgery
+        allergies: v.array(v.string()),
+        noKnownAllergies: v.optional(v.boolean()),
+        mobility: v.optional(v.string()), // MobilityId in lib/onboarding/health.ts
+        notes: v.optional(v.string()),
+      }),
+    ),
+    // People to call in an emergency; not necessarily on the care team.
+    emergencyContacts: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          relationship: v.optional(v.string()),
+          phone: v.string(),
+        }),
+      ),
+    ),
     // Spoken agreement on the band's first boot.
     consent: v.optional(
       v.object({
@@ -210,6 +229,18 @@ export default defineSchema({
     event: v.optional(v.string()), // WearableEvent, on role "event" turns
     at: v.number(),
   }).index("by_session", ["sessionId", "at"]),
+
+  // What the band should watch for (heart rate, temperature, movement), researched
+  // by convex/agent.ts. `result` matches watchListSchema in lib/watch-list.ts.
+  watchLists: defineTable({
+    patientId: v.id("patients"),
+    status: v.union(v.literal("researching"), v.literal("ready"), v.literal("failed")),
+    requestedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    result: v.optional(v.any()),
+    model: v.optional(v.string()),
+    error: v.optional(v.string()),
+  }).index("by_patient", ["patientId"]),
 
   devices: defineTable({
     patientId: v.id("patients"),

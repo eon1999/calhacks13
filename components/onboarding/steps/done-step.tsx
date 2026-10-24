@@ -7,15 +7,17 @@ import { StepHeading, TextButton } from "../ui";
 interface DoneStepProps {
   patientName: string;
   recoveryLabel: string | null;
+  healthLabel: string;
   medicationCount: number;
   paired: boolean;
   teamCount: number;
-  onEdit: (step: "meds" | "band" | "team") => void;
+  onEdit: (step: "health" | "meds" | "band" | "team") => void;
 }
 
-export function DoneStep({ patientName, recoveryLabel, medicationCount, paired, teamCount, onEdit }: DoneStepProps) {
+export function DoneStep({ patientName, recoveryLabel, healthLabel, medicationCount, paired, teamCount, onEdit }: DoneStepProps) {
   const rows = [
     { label: "Recovery", value: recoveryLabel ?? "Not set", step: null },
+    { label: "Health", value: healthLabel, step: "health" as const },
     {
       label: "Medicines",
       value: medicationCount ? `${medicationCount} on the schedule` : "None yet",
