@@ -1,6 +1,7 @@
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, query, type QueryCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { MAX_HEALTH_ITEMS, mobilityId } from "../lib/onboarding/health";
 
 // Family-led onboarding: the owner creates the patient, adds meds, pairs the
 // band (convex/pairing.ts) and invites the care team (convex/invites.ts).
@@ -29,14 +30,14 @@ const patientInput = {
   recovery: recoveryInput,
 };
 
-function text(value: string, field: string, max = MAX_TEXT): string {
+export function text(value: string, field: string, max = MAX_TEXT): string {
   const trimmed = value.trim();
   if (!trimmed) throw new Error(`${field} is required`);
   if (trimmed.length > max) throw new Error(`${field} is too long`);
   return trimmed;
 }
 
-function optionalText(value: string | undefined, field: string, max = MAX_TEXT): string | undefined {
+export function optionalText(value: string | undefined, field: string, max = MAX_TEXT): string | undefined {
   return value?.trim() ? text(value, field, max) : undefined;
 }
 
@@ -149,6 +150,48 @@ export const updatePatient = mutation({
   },
 });
 
+export const healthInput = v.object({
+  conditions: v.array(v.string()),
+  allergies: v.array(v.string()),
+  noKnownAllergies: v.optional(v.boolean()),
+  mobility: v.optional(v.string()),
+  notes: v.optional(v.string()),
+});
+
+/** Trimmed, de-duplicated (case-insensitive) list of short entries. */
+export function cleanList(items: string[], field: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of items) {
+    const trimmed = item.trim();
+    if (!trimmed || seen.has(trimmed.toLowerCase())) continue;
+    seen.add(trimmed.toLowerCase());
+    out.push(text(trimmed, field, 100));
+  }
+  if (out.length > MAX_HEALTH_ITEMS) throw new Error(`Too many ${field.toLowerCase()} entries`);
+  return out;
+}
+
+export const updateHealth = mutation({
+  args: { userId: v.string(), patientId: v.id("patients"), health: healthInput },
+  handler: async (ctx, { userId, patientId, health }) => {
+    await requireManager(ctx, patientId, userId);
+    if (health.mobility && !mobilityId.safeParse(health.mobility).success) {
+      throw new Error(`Unknown mobility "${health.mobility}"`);
+    }
+    const noKnownAllergies = health.noKnownAllergies ?? false;
+    await ctx.db.patch(patientId, {
+      health: {
+        conditions: cleanList(health.conditions, "Conditions"),
+        allergies: noKnownAllergies ? [] : cleanList(health.allergies, "Allergies"),
+        noKnownAllergies,
+        mobility: health.mobility || undefined,
+        notes: optionalText(health.notes, "Health notes", MAX_NOTES),
+      },
+    });
+  },
+});
+
 export const addMedication = mutation({
   args: {
     userId: v.string(),
@@ -158,25 +201,34 @@ export const addMedication = mutation({
     times: v.array(v.string()),
     windowMinutes: v.optional(v.number()),
   },
-  handler: async (ctx, { userId, patientId, name, doseLabel, times, windowMinutes }) => {
+  handler: async (ctx, { userId, patientId, ...med }) => {
     await requireManager(ctx, patientId, userId);
-    const cleanTimes = [...new Set(times.map((t) => t.trim()))].sort();
-    if (cleanTimes.length === 0) throw new Error("Add at least one time");
-    const bad = cleanTimes.find((t) => !HHMM.test(t));
-    if (bad) throw new Error(`"${bad}" isn't a time like 08:00`);
-    const window = windowMinutes ?? 60;
-    if (window < 5 || window > 240) throw new Error("Reminder window must be 5–240 minutes");
-
-    return ctx.db.insert("medications", {
-      patientId,
-      name: text(name, "Medicine name"),
-      doseLabel: text(doseLabel, "Dose"),
-      times: cleanTimes,
-      windowMinutes: window,
-      active: true,
-    });
+    return insertMedication(ctx, patientId, med);
   },
 });
+
+/** Validates and schedules a medicine. Shared with the demo profile editor (convex/profile.ts). */
+export async function insertMedication(
+  ctx: MutationCtx,
+  patientId: Id<"patients">,
+  { name, doseLabel, times, windowMinutes }: { name: string; doseLabel: string; times: string[]; windowMinutes?: number },
+) {
+  const cleanTimes = [...new Set(times.map((t) => t.trim()))].sort();
+  if (cleanTimes.length === 0) throw new Error("Add at least one time");
+  const bad = cleanTimes.find((t) => !HHMM.test(t));
+  if (bad) throw new Error(`"${bad}" isn't a time like 08:00`);
+  const window = windowMinutes ?? 60;
+  if (window < 5 || window > 240) throw new Error("Reminder window must be 5–240 minutes");
+
+  return ctx.db.insert("medications", {
+    patientId,
+    name: text(name, "Medicine name"),
+    doseLabel: text(doseLabel, "Dose"),
+    times: cleanTimes,
+    windowMinutes: window,
+    active: true,
+  });
+}
 
 export const removeMedication = mutation({
   args: { userId: v.string(), medicationId: v.id("medications") },

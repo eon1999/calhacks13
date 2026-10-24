@@ -172,6 +172,38 @@ describe("prompt", () => {
     expect(prompt).toContain("Consent: not asked yet");
   });
 
+  it("describes other conditions, allergies and mobility from the health step", () => {
+    const withHealth = {
+      ...ctx,
+      patient: {
+        name: "Margaret",
+        timeZone: "UTC",
+        health: { conditions: ["Diabetes", "Atrial fibrillation"], allergies: ["Penicillin"], mobility: "walker" },
+      },
+    } as unknown as PatientContext;
+    const prompt = buildSystemPrompt(withHealth, Date.UTC(2026, 9, 23, 8, 5));
+    expect(prompt).toContain("Other health conditions: Diabetes, Atrial fibrillation");
+    expect(prompt).toContain("Allergies: Penicillin");
+    expect(prompt).toContain("Getting around: Uses a walker");
+  });
+
+  it("lists emergency contacts so the agent can tell them who to call", () => {
+    const withContacts = {
+      ...ctx,
+      patient: {
+        name: "Margaret",
+        timeZone: "UTC",
+        emergencyContacts: [
+          { name: "Sarah Lee", relationship: "Daughter", phone: "(555) 010-2030" },
+          { name: "Tom", phone: "555-0199" },
+        ],
+      },
+    } as unknown as PatientContext;
+    const prompt = buildSystemPrompt(withContacts, Date.UTC(2026, 9, 23, 8, 5));
+    expect(prompt).toContain("Emergency contacts:\n- Sarah Lee (Daughter): (555) 010-2030\n- Tom: 555-0199");
+    expect(buildSystemPrompt(ctx, Date.UTC(2026, 9, 23, 8, 5))).toContain("Emergency contacts:\n- None listed.");
+  });
+
   it("includes the patient, schedule slot ids, and statuses", () => {
     const prompt = buildSystemPrompt(ctx, Date.UTC(2026, 9, 23, 8, 5));
     expect(prompt).toContain("Patient: Margaret");
