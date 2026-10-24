@@ -5,6 +5,13 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Voice agent stays on task
+
+The voice agent was drifting into small talk. `lib/voice/prompt.ts` now has a **Staying on task** section. Cadence is still warm, but every reply should serve recovery (meds, symptoms, pain, mobility, sleep, mood). It doesn't start small talk or ask questions just to keep the patient talking. When the patient goes off-topic, it acknowledges briefly and steers back. It declines trivia and general questions. Once the reason for the conversation is handled, it closes in one sentence. The persona line changed from "caring friend" to "caring nurse who has a few minutes".
+- Not yet checked against live Claude.
+
+---
+
 ## 2026-10-23: Text alerts (SMS via Twilio)
 
 Every alert Cadence raises now **texts the care team**. That covers the agent's `alert_care_team`, red-flag check-ins, and a declined first-boot consent.
@@ -159,7 +166,7 @@ First live end-to-end run with real Claude and Cartesia keys (keys live in `.env
 **Structure (top → bottom)**
 - **Loader**: wordmark letters rise in, and an "experience is loading" bar counts to 100%. Then it clip-wipes away and the hero reveals.
 - **Story stage** (`story-stage.tsx`): a sticky painted dusk sky (`sky.tsx`) plus a **particle canvas** (`particle-field.tsx`) behind the hero and 4 beats. Each beat **morphs** ~2.4k particles into its shape as it crosses mid-screen: ECG heartbeat line → capsule (Reminds) → voice wave (Listens) → heart (Cares) → sphere (Our people). Particles sway gently (no full spin, so the flat heartbeat line never turns edge-on; no pulsing), scatter from the cursor and spring back. The sky layers parallax with the pointer. A right-edge index shows the active beat.
-- **What it does** (`feature-wheel.tsx`): a pinned scroll wheel of capabilities. The centred row is lit with ↪, and hovering selects a row.
+- **What it does** (`feature-wheel.tsx`): a pinned scroll wheel of capabilities. The centred row is lit with →, and hovering selects a row.
 - **Some / of the / surfaces** (`surfaces.tsx`): tilt-on-hover cards linking to `/hub`, `/care`, `/demo`, `/settings`.
 - **A day with Cadence** (`day-timeline.tsx`): an awards-table-style ledger of a day's moments.
 - **Closing** (`closing.tsx`): CTA, link columns, giant wordmark. Also a floating **glass pill nav** (`pill-nav.tsx`) and a **cursor glow** (`cursor-glow.tsx`).
@@ -177,6 +184,8 @@ First live end-to-end run with real Claude and Cartesia keys (keys live in `.env
 - Emotion's display serif is proprietary, so **Instrument Serif** stands in. Their 3D WebGL landscape is approximated with 2D canvas plus layered SVG.
 - Gotcha: tokens in `@theme inline` are **not** emitted as CSS variables. Hand-written CSS in `globals.css` must use the next/font vars (`--font-instrument-serif`, `--font-plex-mono`) or literal values, not `var(--font-display)` / `var(--color-violet)`.
 - Headlines are plain italic + uppercase lines; the ↪ indents were removed by request.
+- Fixed (whole app): `--font-sans` in `globals.css` referenced itself, so all sans text fell back to Times. It now points at `--font-geist-sans`, so body text, buttons, `/hub` etc. render in Geist.
+- Fixed "What it does" clipping: inactive wheel rows slid right past the column's `overflow-hidden` edge (now slide left), and `splitText` clip wrappers shaved descenders (`use-reveal.ts` pads them with offsetting negative margin).
 - `prefers-reduced-motion` is respected: the loader is skipped, there is no spin or pulse, morphs are instant, and text shows without animation.
 - Triggers use IntersectionObserver rather than anime's `onScroll`. It's simpler, and it behaves identically under React StrictMode's double-mount.
 - Not yet checked on a real phone. Mobile layout centres the shape higher and uses fewer particles (1.1k).
