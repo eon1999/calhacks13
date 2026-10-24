@@ -138,7 +138,33 @@ describe("prompt", () => {
     lastCheckIn: null,
     checkInsToday: [],
     alertsToday: [],
+    careTeam: [],
   } as unknown as PatientContext;
+
+  it("describes the recovery, care team and pending consent from onboarding", () => {
+    const onboarded = {
+      ...ctx,
+      patient: {
+        name: "Margaret Lee",
+        preferredName: "Maggie",
+        timeZone: "UTC",
+        extraPatience: true,
+        recovery: { procedure: "knee_replacement", surgeryDate: "2026-10-20", careNotes: "No kneeling" },
+      },
+      careTeam: [
+        { name: "Sarah", role: "care_partner", relationship: "Daughter", urgentAlerts: true },
+        { name: "Dr. Patel", role: "clinician", urgentAlerts: false },
+      ],
+    } as unknown as PatientContext;
+    const prompt = buildSystemPrompt(onboarded, Date.UTC(2026, 9, 23, 8, 5));
+    expect(prompt).toContain("Call them: Maggie");
+    expect(prompt).toContain("Knee replacement, Day 3 after surgery · First days home");
+    expect(prompt).toContain("Care notes from the family: No kneeling");
+    expect(prompt).toContain("Speak extra slowly");
+    expect(prompt).toContain("- Sarah (Daughter), gets urgent alerts");
+    expect(prompt).toContain("- Dr. Patel (doctor or nurse), sees reports only");
+    expect(prompt).toContain("Consent: not asked yet");
+  });
 
   it("includes the patient, schedule slot ids, and statuses", () => {
     const prompt = buildSystemPrompt(ctx, Date.UTC(2026, 9, 23, 8, 5));

@@ -9,6 +9,7 @@ export const wearableEvent = z.enum([
   "tremor_spike",
   "fall",
   "sos",
+  "first_boot",
 ]);
 export type WearableEvent = z.infer<typeof wearableEvent>;
 
@@ -19,6 +20,7 @@ export const EVENT_LABELS: Record<WearableEvent, string> = {
   tremor_spike: "Tremor spike detected",
   fall: "Possible fall detected",
   sos: "SOS button pressed",
+  first_boot: "First time on the wrist",
 };
 
 /** Events that are also logged to the `events` table for the care team. */
@@ -84,6 +86,8 @@ export function describeEvent(event: WearableEvent, slots: DoseSlot[]): string {
       return "[Wearable event] Possible fall detected by the wristband. Ask right away if they are OK and whether they need help.";
     case "sos":
       return "[Wearable event] The patient pressed the SOS button on the wristband. Alert the care team as urgent right away, tell them help is being notified, and ask what's happening.";
+    case "first_boot":
+      return "[Wearable event] The band was just paired and put on for the first time. Introduce yourself in one sentence, then ask whether it's okay for you to let the people listed under Care team know if they fall, miss medicine, or seem unwell, naming those people. When they answer, call record_consent.";
   }
 }
 

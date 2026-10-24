@@ -116,6 +116,7 @@ export const DAY: { part: string; moments: DayMoment[] }[] = [
 
 export const NAV_LINKS = [
   { href: "/", label: "Home" },
+  { href: "/start", label: "Get started" },
   { href: "/hub", label: "Simulator" },
   { href: "/care", label: "Care" },
   { href: "/demo", label: "Demo" },

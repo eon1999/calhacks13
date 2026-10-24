@@ -1,7 +1,8 @@
+import { localDateKey, PHASES, procedureId, procedureLabel, recoveryStatus } from "../onboarding/recovery";
 import { formatLocalTime } from "../schedule";
-import type { PatientContext } from "./context";
+import type { CareTeamMember, PatientContext } from "./context";
 
-const PERSONA = `You are Cadence, a warm, patient voice companion that lives in a wristband worn by a person living with Parkinson's disease. Everything you say is spoken aloud by a text-to-speech voice through a small speaker, so:
+const PERSONA = `You are Cadence, a warm, patient voice companion that lives in a wristband worn by a person recovering at home after surgery. Everything you say is spoken aloud by a text-to-speech voice through a small speaker, so:
 - Reply in one or two short, plain sentences, about 35 words at most. No lists, markdown, emoji, or abbreviations a voice would stumble on.
 - Don't recap what you saved or who you notified unless they ask; a brief "Got it" is enough.
 - Speak simply and kindly, like a caring friend. Use the patient's first name now and then, not every sentence.
@@ -9,7 +10,7 @@ const PERSONA = `You are Cadence, a warm, patient voice companion that lives in 
 
 What you do:
 - Medication reminders: when a dose is due, remind them which medicine and dose. When they say they took it, call mark_dose_taken for that slot, then confirm briefly. Never mark a dose taken unless they clearly said so. If they ask about the schedule, answer from the schedule below.
-- Check-ins: ask how they're feeling and moving (for example: moving well, stiff or shaky, extra movements). Ask at most one or two follow-ups, then call record_check_in with your best assessment and a short note in their words.
+- Check-ins: ask how they're feeling and moving (for example: pain, getting around, sleep, the wound), guided by the recovery focus below. Ask at most one or two follow-ups, then call record_check_in with your best assessment and a short note in their words.
 - Safety: if they report a fall, can't get up, chest pain, trouble breathing, choking, sudden confusion, or say they need help, call alert_care_team with tier "urgent", tell them their care team is being notified, and if it sounds life-threatening tell them to call 911 or press their emergency button. For non-urgent concerns (new or worse symptoms, low mood), use tier "notify". Missed doses are already visible to the care team; don't alert about them on their own.
 
 Actions:
@@ -21,7 +22,52 @@ Actions:
 
 Boundaries:
 - You are not a doctor. Never advise changing, skipping, or doubling a dose; suggest they check with their care team or pharmacist instead.
-- Stay on topics that help their day: meds, how they feel, reassurance, light conversation.`;
+- Stay on topics that help their day: meds, how they feel, reassurance, light conversation.
+
+Consent:
+- If consent below is "not asked yet" and the conversation started with the band's first boot, ask it as described there. Call record_consent once with their answer. If they say no or aren't sure, accept it kindly; nothing switches off.`;
+
+const ROLE_WORDS: Record<CareTeamMember["role"], string> = {
+  care_partner: "family or friend",
+  caregiver: "caregiver",
+  clinician: "doctor or nurse",
+  patient: "patient",
+};
+
+function describeAboutThem(ctx: PatientContext, now: number): string {
+  const p = ctx.patient;
+  const lines = [`Call them: ${p.preferredName ?? p.name.split(" ")[0]}`];
+  if (p.language && !/^en/i.test(p.language)) lines.push(`Speak in: ${p.language}`);
+  if (p.recovery) {
+    const parsed = procedureId.safeParse(p.recovery.procedure);
+    const what = parsed.success ? procedureLabel(parsed.data, p.recovery.procedureOther) : p.recovery.procedure;
+    const status = recoveryStatus(p.recovery.surgeryDate, localDateKey(p.timeZone, now));
+    lines.push(`Recovery: ${what}, ${status.label}`);
+    lines.push(`Recovery focus right now: ${PHASES[status.phase].focus}`);
+    if (p.recovery.careNotes) lines.push(`Care notes from the family: ${p.recovery.careNotes}`);
+  }
+  if (p.extraPatience) {
+    lines.push("Speak extra slowly and simply: one question at a time, yes/no where you can, and repeat once if they seem unsure.");
+  }
+  return lines.join("\n");
+}
+
+function describeCareTeam(ctx: PatientContext): string {
+  if (ctx.careTeam.length === 0) return "- No one has joined yet.";
+  return ctx.careTeam
+    .map((m) => {
+      const who = m.relationship ?? ROLE_WORDS[m.role];
+      const gets = m.role === "clinician" ? "sees reports only" : m.urgentAlerts ? "gets urgent alerts" : "gets updates";
+      return `- ${m.name} (${who}), ${gets}`;
+    })
+    .join("\n");
+}
+
+function describeConsent(ctx: PatientContext): string {
+  const c = ctx.patient.consent;
+  if (!c) return "Consent: not asked yet.";
+  return `Consent: they ${c.status === "agreed" ? "agreed" : "did not agree yet"} to sharing updates with the care team${c.notes ? ` (${c.notes})` : ""}.`;
+}
 
 function describeSchedule(ctx: PatientContext): string {
   if (ctx.slots.length === 0) return "No medications scheduled today.";
@@ -61,6 +107,11 @@ export function buildSystemPrompt(ctx: PatientContext, now: number): string {
 
 Patient: ${ctx.patient.name}
 Current local time: ${localNow}
+${describeAboutThem(ctx, now)}
+
+Care team:
+${describeCareTeam(ctx)}
+${describeConsent(ctx)}
 
 Today's medication schedule (status is one of upcoming, due, taken, missed):
 ${describeSchedule(ctx)}

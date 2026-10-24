@@ -5,6 +5,49 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-23: Onboarding (family-led), pivot to post-op recovery
+
+**Product pivot:** Cadence now supports people **recovering at home after surgery** instead of only people with Parkinson's. Onboarding captures the procedure and surgery date, and the voice agent's persona and check-ins follow the recovery phase. The check-in states (`moving_well`/`stiff_shaky`/…), tremor tables and landing copy still say Parkinson's; that's the next pivot step.
+
+**Decisions (from a design grilling)**
+- **Stakeholders and roles:** family/friends (`care_partner`), paid caregiver/home aide (`caregiver`, new), doctor (`clinician`), and the patient (`patient`, new). What each role gets lives in `lib/onboarding/roles.ts`. Doctors get reports only, never live pages.
+- **A family member starts setup and owns the profile.** The owner **or the patient** can invite people; caregivers and doctors can't.
+- **The patient's app is opt-in.** The band is their main interface. Their onboarding is a **spoken consent** on the band's first boot. A "no" doesn't switch anything off; it opens an `ask` alert so the family talks it through.
+- **Pairing:** the band shows and speaks a 6-digit code, and the owner types it in.
+- **Auth:** Clerk was chosen, but no keys exist yet. Everything takes a `userId` from a **demo identity** in localStorage (`components/onboarding/use-demo-identity.ts`). Swap it for Clerk plus `ctx.auth` when keys arrive.
+
+**Flows**
+- `/start`: the setup wizard. Steps: You → Who it's for (name, what to call them, language, time zone, "extra patience") → Recovery (procedure, surgery/discharge dates, discharge notes, with a live "Day 3 after surgery · First days home" preview) → Medicines (manual entry, or **scan the pharmacy label** with Claude vision) → Pair band (skippable) → Care team invites (skippable) → All set. Progress persists in localStorage, so a refresh resumes where you left off.
+- `/join/[token]`: accepting an invite, then a role intro listing exactly what you will and won't be told about. If the browser is already a team member (the owner testing their own link), "Continue as someone new" switches **this tab only** (sessionStorage).
+- `/hub`: a new **Band setup** card shows the pairing code ("Say the code" speaks it). Once paired, the simulator switches to that patient live, and **First time on the wrist** runs the consent intro.
+
+**Where things live**
+| Path | What |
+|---|---|
+| `lib/onboarding/recovery.ts` (+ test) | Procedures, recovery phases (pre-op, first days 0–3, early 4–14, strengthening 15–42, routine 43+), and what the agent focuses on in each |
+| `lib/onboarding/pairing.ts` (+ test) | Code generation, normalising and formatting, spoken form |
+| `lib/onboarding/roles.ts` | Role titles, permissions, gets/doesn't-get copy |
+| `lib/onboarding/med-scan.ts`, `app/api/onboarding/scan-med` | Label photo → `{name, doseLabel, times, instructions}` via structured outputs (Sonnet 5.5, effort low, fallbacks on). Returns 422 when it isn't a label. "As needed" returns no times. |
+| `convex/onboarding.ts` | `createPatient`, `updatePatient`, `addMedication`, `removeMedication`, `setup` query, and the `requireManager` guard |
+| `convex/invites.ts` | `create`, `revoke`, `get`, `accept` (7-day tokens) |
+| `convex/pairing.ts` | `requestCode`, `deviceStatus`, `claim`. The band sends only the SHA-256 of its own secret, which is copied to `devices.tokenHash`, ready for device auth. |
+| `convex/schema.ts` | Patient profile fields (`preferredName`, `language`, `extraPatience`, `recovery`, `consent`, `ownerUserId`), more `careTeamMembers` fields, and the new `invites` and `pairingCodes` tables |
+| `lib/voice/{prompt,tools,events,context}.ts` | The prompt adds "About them" (recovery phase and focus, care notes, extra patience), "Care team" and "Consent". New `first_boot` event and `record_consent` tool. |
+| `components/onboarding/*` | Wizard, steps, and form primitives in the landing's lilac/plum style |
+| `components/convex-client-provider.tsx` | `ConvexReactClient` for `/start`, `/join` and `/hub`. It's created after mount, because its constructor uses `Math.random()`, which Next's prerender rejects. |
+
+**Verified live** (Claude, Cartesia and the Convex dev deployment): the whole wizard; adding a medicine; label scan (an Oxycodone label read in about 3.8 s; a non-label returned 422); pairing (the simulator flipped to the patient in real time); invite → join as Maria → she appeared live on Sarah's team list; first boot ("…let Sarah, your daughter, and Maria, your caregiver, know…") → "yes" → `record_consent` → the band card shows "Consent: agreed". `tsc`, `eslint`, 54 unit tests and `next build` all pass.
+
+**Gotchas / open**
+- **Deploy:** run `npx convex deploy` before Vercel picks this up (new tables and functions).
+- **No real auth.** `userId` comes from the client, so any caller can claim to be the owner. This is the same class of gap as `convex/voice.ts`.
+- Invites aren't sent by email or SMS. The owner copies the link.
+- `/care`, the caregiver checklist and the patient's own view are still stubs. After joining, everyone except doctors goes to `/care`.
+- "Say the code" uses `/api/debug/speak`, which is off in production unless `CADENCE_DEBUG=1`.
+- Simulator: audio in a background or undrawn tab never fires `ended`, so the band sits at "Speaking…" (this predates onboarding). Keep the tab in front.
+
+---
+
 ## 2026-10-23: Vercel deployment notes
 
 No pipeline code depended on `.env.local`: `lib/voice/config.ts` reads `process.env` per request, so Vercel project env vars work as-is.

@@ -10,6 +10,9 @@
 
 import type * as debug from "../debug.js";
 import type * as http from "../http.js";
+import type * as invites from "../invites.js";
+import type * as onboarding from "../onboarding.js";
+import type * as pairing from "../pairing.js";
 import type * as seed from "../seed.js";
 import type * as voice from "../voice.js";
 
@@ -22,6 +25,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   debug: typeof debug;
   http: typeof http;
+  invites: typeof invites;
+  onboarding: typeof onboarding;
+  pairing: typeof pairing;
   seed: typeof seed;
   voice: typeof voice;
 }>;

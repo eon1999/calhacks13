@@ -1,22 +1,86 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const careRole = v.union(
+  v.literal("care_partner"), // family and friends
+  v.literal("caregiver"), // paid caregiver / home aide
+  v.literal("clinician"),
+  v.literal("patient"),
+);
+
 // All timestamps are UTC milliseconds.
 export default defineSchema({
   patients: defineTable({
     name: v.string(),
     timeZone: v.string(),
     tremorBaseline: v.optional(v.number()),
+    // Onboarding profile (optional so the seeded demo patient stays valid).
+    preferredName: v.optional(v.string()), // what the band calls them
+    language: v.optional(v.string()),
+    extraPatience: v.optional(v.boolean()), // slower, simpler, repeat once
+    ownerUserId: v.optional(v.string()),
+    recovery: v.optional(
+      v.object({
+        procedure: v.string(), // ProcedureId in lib/onboarding/recovery.ts
+        procedureOther: v.optional(v.string()),
+        surgeryDate: v.string(), // "YYYY-MM-DD"
+        dischargeDate: v.optional(v.string()),
+        careNotes: v.optional(v.string()), // e.g. "no lifting over 10 lb"
+      }),
+    ),
+    // Spoken agreement on the band's first boot.
+    consent: v.optional(
+      v.object({
+        status: v.union(v.literal("agreed"), v.literal("declined")),
+        at: v.number(),
+        notes: v.optional(v.string()),
+      }),
+    ),
   }),
 
   careTeamMembers: defineTable({
     patientId: v.id("patients"),
     userId: v.string(),
-    role: v.union(v.literal("care_partner"), v.literal("clinician")),
+    role: careRole,
     permissions: v.array(
       v.union(v.literal("alerts"), v.literal("summary"), v.literal("report")),
     ),
-  }).index("by_patient", ["patientId"]),
+    name: v.optional(v.string()),
+    relationship: v.optional(v.string()),
+    isOwner: v.optional(v.boolean()),
+    urgentAlerts: v.optional(v.boolean()),
+    joinedAt: v.optional(v.number()),
+  })
+    .index("by_patient", ["patientId"])
+    .index("by_user", ["userId"]),
+
+  invites: defineTable({
+    patientId: v.id("patients"),
+    token: v.string(),
+    role: careRole,
+    name: v.string(),
+    contact: v.optional(v.string()), // email or phone; not sent anywhere yet
+    invitedBy: v.string(), // userId
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    acceptedAt: v.optional(v.number()),
+    acceptedUserId: v.optional(v.string()),
+  })
+    .index("by_token", ["token"])
+    .index("by_patient", ["patientId"]),
+
+  // Short-lived codes a wristband shows so a family member can claim it.
+  pairingCodes: defineTable({
+    code: v.string(),
+    deviceId: v.string(),
+    tokenHash: v.string(), // SHA-256 of the band's own secret; copied to devices on claim
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    patientId: v.optional(v.id("patients")), // set once claimed
+    claimedAt: v.optional(v.number()),
+  })
+    .index("by_code", ["code"])
+    .index("by_device", ["deviceId"]),
 
   medications: defineTable({
     patientId: v.id("patients"),

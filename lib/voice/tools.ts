@@ -61,6 +61,21 @@ export const voiceTools: Anthropic.Beta.BetaTool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "record_consent",
+    description:
+      "Save the patient's answer to whether Cadence may keep their care team updated. Call once, after they answer the first-boot question.",
+    strict: true,
+    input_schema: {
+      type: "object",
+      properties: {
+        agreed: { type: "boolean", description: "True only if they clearly said yes." },
+        notes: { type: "string", description: "Their answer in a few words, e.g. 'yes, but not my son'." },
+      },
+      required: ["agreed", "notes"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 const markDoseTakenInput = z.object({ slot_id: z.string() });
@@ -69,6 +84,7 @@ const recordCheckInInput = z.object({
   notes: z.string().max(500),
   red_flag: z.boolean(),
 });
+const recordConsentInput = z.object({ agreed: z.boolean(), notes: z.string().max(300) });
 const alertCareTeamInput = z.object({
   tier: z.enum(["notify", "urgent"]),
   reason: z.string().min(1).max(500),
@@ -124,10 +140,20 @@ async function alertCareTeam(input: unknown, ctx: ToolContext): Promise<ToolOutc
   return { content: `Care team alerted (${tier}).`, isError: false };
 }
 
+async function recordConsent(input: unknown, ctx: ToolContext): Promise<ToolOutcome> {
+  const { agreed, notes } = recordConsentInput.parse(input);
+  await convex().mutation(api.voice.recordConsent, { patientId: ctx.patientId, agreed, notes });
+  return {
+    content: agreed ? "Consent saved." : "Saved. The family will be asked to talk it through; nothing is switched off.",
+    isError: false,
+  };
+}
+
 const handlers: Record<string, (input: unknown, ctx: ToolContext) => Promise<ToolOutcome>> = {
   mark_dose_taken: markDoseTaken,
   record_check_in: recordCheckIn,
   alert_care_team: alertCareTeam,
+  record_consent: recordConsent,
 };
 
 export async function runTool(name: string, input: unknown, ctx: ToolContext): Promise<ToolOutcome> {

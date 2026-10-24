@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { SlotStatus } from "@/lib/schedule";
 import { DebugPanel } from "./debug-panel";
+import { PairingCard } from "./pairing-card";
+import { useBandPairing } from "./use-band-pairing";
 import { useRecorder } from "./use-recorder";
 import { useVoiceAgent, type AgentStatus } from "./use-voice-agent";
 
@@ -26,7 +28,9 @@ const SLOT_VARIANT: Record<SlotStatus, "default" | "secondary" | "outline" | "de
 };
 
 export function WearableSimulator() {
-  const agent = useVoiceAgent();
+  const band = useBandPairing();
+  // Once paired, the band talks to its own patient; until then, the demo patient.
+  const agent = useVoiceAgent(band.pairing.state === "paired" ? band.pairing.patientId : undefined);
   const recorder = useRecorder();
   const [typed, setTyped] = useState("");
 
@@ -55,9 +59,15 @@ export function WearableSimulator() {
     await agent.sendTurn({ text });
   }
 
+  const pairingCard = (
+    <PairingCard pairing={band.pairing} error={band.error} agent={agent} busy={busy} onForget={band.forget} />
+  );
+
   if (!agent.patient) {
     return (
-      <Card className="mx-auto max-w-md">
+      <div className="mx-auto max-w-md space-y-4">
+      {pairingCard}
+      <Card>
         <CardHeader>
           <CardTitle>Wearable simulator</CardTitle>
         </CardHeader>
@@ -66,6 +76,7 @@ export function WearableSimulator() {
           <Button onClick={() => void agent.seed()}>Seed demo patient</Button>
         </CardContent>
       </Card>
+      </div>
     );
   }
 
@@ -106,6 +117,8 @@ export function WearableSimulator() {
             <Send />
           </Button>
         </form>
+
+        {pairingCard}
 
         <DebugPanel agent={agent} busy={busy} />
       </div>

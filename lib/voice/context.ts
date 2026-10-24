@@ -9,6 +9,14 @@ export interface PatientContext {
   lastCheckIn: Doc<"checkIns"> | null;
   checkInsToday: Doc<"checkIns">[];
   alertsToday: Doc<"alerts">[];
+  careTeam: CareTeamMember[];
+}
+
+export interface CareTeamMember {
+  name: string;
+  role: Doc<"careTeamMembers">["role"];
+  relationship?: string;
+  urgentAlerts: boolean;
 }
 
 export async function loadPatientContext(
@@ -41,5 +49,6 @@ export async function loadPatientContext(
     lastCheckIn: ctx.lastCheckIn,
     checkInsToday: ctx.checkInsToday,
     alertsToday: ctx.alertsToday,
+    careTeam: ctx.careTeam,
   };
 }

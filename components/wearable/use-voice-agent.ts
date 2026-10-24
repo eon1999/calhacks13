@@ -54,8 +54,11 @@ function playWav(blob: Blob): Promise<void> {
   });
 }
 
-/** Client for the wearable voice endpoints (/api/voice/*). */
-export function useVoiceAgent() {
+/**
+ * Client for the wearable voice endpoints (/api/voice/*).
+ * `patientId` is the patient the band is paired to; without one the demo's first patient is used.
+ */
+export function useVoiceAgent(patientId?: string) {
   const [patient, setPatient] = useState<PatientInfo | null>(null);
   const [slots, setSlots] = useState<DoseSlot[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -74,7 +77,8 @@ export function useVoiceAgent() {
   }, []);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/voice/patient", { cache: "no-store" });
+    const query = patientId ? `?patientId=${encodeURIComponent(patientId)}` : "";
+    const res = await fetch(`/api/voice/patient${query}`, { cache: "no-store" });
     if (!res.ok) {
       setPatient(null);
       setLoadError(await errorMessage(res));
@@ -84,7 +88,7 @@ export function useVoiceAgent() {
     setPatient(data.patient);
     setSlots(data.slots);
     setLoadError(null);
-  }, []);
+  }, [patientId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch

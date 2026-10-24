@@ -53,7 +53,21 @@ export const getContext = query({
         .collect()
     ).filter((a) => a.createdAt >= start);
 
-    return { patient, medications, doseEvents, lastCheckIn, checkInsToday, alertsToday };
+    const careTeam = (
+      await ctx.db
+        .query("careTeamMembers")
+        .withIndex("by_patient", (q) => q.eq("patientId", patientId))
+        .collect()
+    )
+      .filter((m) => m.role !== "patient")
+      .map((m) => ({
+        name: m.name ?? "a care team member",
+        role: m.role,
+        relationship: m.relationship,
+        urgentAlerts: m.urgentAlerts ?? false,
+      }));
+
+    return { patient, medications, doseEvents, lastCheckIn, checkInsToday, alertsToday, careTeam };
   },
 });
 
@@ -149,6 +163,31 @@ export const createAlert = mutation({
       createdAt: Date.now(),
       status: "open",
     }),
+});
+
+/** The patient's spoken answer to the band's first-boot consent question. */
+export const recordConsent = mutation({
+  args: {
+    patientId: v.id("patients"),
+    agreed: v.boolean(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, { patientId, agreed, notes }) => {
+    const at = Date.now();
+    await ctx.db.patch(patientId, {
+      consent: { status: agreed ? "agreed" : "declined", at, notes },
+    });
+    if (!agreed) {
+      // A "no" doesn't switch anything off; it asks the family to talk it through.
+      await ctx.db.insert("alerts", {
+        patientId,
+        tier: "ask",
+        reason: `Didn't agree to sharing updates with the care team yet${notes ? `: ${notes}` : ""}. Worth a conversation.`,
+        createdAt: at,
+        status: "open",
+      });
+    }
+  },
 });
 
 /** Safety events reported by the wearable (fall, SOS), kept for the care team. */

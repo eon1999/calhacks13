@@ -27,6 +27,7 @@ export function Closing() {
         </span>
         <Headline lines={CTA_LINES} className="mt-5 text-[clamp(3.2rem,8vw,8rem)]" />
         <div data-fade className="mt-10 flex flex-wrap items-center gap-6">
+          <GlassButton href="/start">Set up Cadence</GlassButton>
           <GlassButton href="/hub">Try the wristband</GlassButton>
           <p className="mono-label max-w-[36ch] text-plum-muted">
             Have a loved one, a patient, or a clinic in mind? Start with the simulator. No hardware needed.
