@@ -1,6 +1,10 @@
-import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { v, type ObjectType } from "convex/values";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { localDayBounds } from "../lib/schedule";
+import { raiseAlert } from "./alerts";
+import { isCareAlert } from "../lib/alerts";
+import { doseConfirmed } from "./doses";
+import { reportFall, reportSos, resolveFallHelped, resolveFallOk } from "./safety";
 
 // Functions backing the voice agent (lib/voice/*). Called from Next.js route
 // handlers via ConvexHttpClient.
@@ -51,7 +55,7 @@ export const getContext = query({
         .query("alerts")
         .withIndex("by_patient_status", (q) => q.eq("patientId", patientId))
         .collect()
-    ).filter((a) => a.createdAt >= start);
+    ).filter((a) => a.createdAt >= start && isCareAlert(a));
 
     const careTeam = (
       await ctx.db
@@ -91,11 +95,13 @@ export const confirmDose = mutation({
       .filter((q) => q.eq(q.field("medicationId"), medicationId))
       .first();
 
+    await doseConfirmed(ctx, patientId, scheduledFor);
     if (existing) {
       await ctx.db.patch(existing._id, {
         status: "taken",
         confirmedAt: now,
-        source: "voice",
+        // Keep "pillbox" when the lid opening started it; voice upgrades it to taken.
+        source: existing.source ?? "voice",
       });
       return existing._id;
     }
@@ -124,30 +130,54 @@ const checkInTrigger = v.union(
   v.literal("manual"),
 );
 
+export const checkInArgs = {
+  patientId: v.id("patients"),
+  trigger: checkInTrigger,
+  transcript: v.string(),
+  state: checkInState,
+  painScore: v.optional(v.number()),
+  notes: v.optional(v.string()),
+  redFlag: v.boolean(),
+};
+
+/** Saves a check-in and raises what it calls for. Shared with the /demo simulator. */
+export async function saveCheckIn(ctx: MutationCtx, args: ObjectType<typeof checkInArgs>) {
+  const at = Date.now();
+  const previous = await ctx.db
+    .query("checkIns")
+    .withIndex("by_patient_time", (q) => q.eq("patientId", args.patientId))
+    .order("desc")
+    .first();
+  const checkInId = await ctx.db.insert("checkIns", { ...args, at });
+  if (args.redFlag) {
+    await raiseAlert(ctx, {
+      patientId: args.patientId,
+      tier: "notify",
+      kind: "red_flag",
+      reason: `Check-in red flag: ${args.notes ?? args.state}`,
+      refId: checkInId,
+      at,
+    });
+  } else if (args.state === "struggling" && previous?.state === "struggling") {
+    await raiseAlert(ctx, {
+      patientId: args.patientId,
+      tier: "notify",
+      kind: "struggling_twice",
+      reason: `Two check-ins in a row where they said they're struggling${args.notes ? ` (latest: ${args.notes})` : ""}.`,
+      refId: checkInId,
+      at,
+    });
+  }
+  // A calm answer to "are you okay?" after a fall cancels the alert timer.
+  if (args.trigger === "fall" && !args.redFlag && args.state !== "struggling") {
+    await resolveFallOk(ctx, args.patientId, at);
+  }
+  return checkInId;
+}
+
 export const recordCheckIn = mutation({
-  args: {
-    patientId: v.id("patients"),
-    trigger: checkInTrigger,
-    transcript: v.string(),
-    state: checkInState,
-    painScore: v.optional(v.number()),
-    notes: v.optional(v.string()),
-    redFlag: v.boolean(),
-  },
-  handler: async (ctx, args) => {
-    const at = Date.now();
-    const checkInId = await ctx.db.insert("checkIns", { ...args, at });
-    if (args.redFlag) {
-      await ctx.db.insert("alerts", {
-        patientId: args.patientId,
-        tier: "notify",
-        reason: `Check-in red flag: ${args.notes ?? args.state}`,
-        createdAt: at,
-        status: "open",
-      });
-    }
-    return checkInId;
-  },
+  args: checkInArgs,
+  handler: async (ctx, args) => saveCheckIn(ctx, args),
 });
 
 export const createAlert = mutation({
@@ -156,14 +186,10 @@ export const createAlert = mutation({
     tier: v.union(v.literal("ask"), v.literal("notify"), v.literal("urgent")),
     reason: v.string(),
   },
-  handler: async (ctx, { patientId, tier, reason }) =>
-    ctx.db.insert("alerts", {
-      patientId,
-      tier,
-      reason,
-      createdAt: Date.now(),
-      status: "open",
-    }),
+  handler: async (ctx, { patientId, tier, reason }) => {
+    if (tier === "urgent") await resolveFallHelped(ctx, patientId);
+    return raiseAlert(ctx, { patientId, tier, kind: "voice_agent", reason });
+  },
 });
 
 /** The patient's spoken answer to the band's first-boot consent question. */
@@ -180,18 +206,22 @@ export const recordConsent = mutation({
     });
     if (!agreed) {
       // A "no" doesn't switch anything off; it asks the family to talk it through.
-      await ctx.db.insert("alerts", {
+      await raiseAlert(ctx, {
         patientId,
         tier: "ask",
+        kind: "consent",
         reason: `Didn't agree to sharing updates with the care team yet${notes ? `: ${notes}` : ""}. Worth a conversation.`,
-        createdAt: at,
-        status: "open",
+        at,
       });
     }
   },
 });
 
-/** Safety events reported by the wearable (fall, SOS), kept for the care team. */
+/**
+ * Safety events reported by the wearable simulator (fall, SOS), kept for the
+ * care team. The hub is already speaking, so no spoken prompt is queued; a
+ * fall still starts the 30-second answer timer and SOS still alerts urgently.
+ */
 export const logDeviceEvent = mutation({
   args: {
     patientId: v.id("patients"),
@@ -199,7 +229,9 @@ export const logDeviceEvent = mutation({
     payload: v.optional(v.any()),
   },
   handler: async (ctx, { patientId, type, payload }) =>
-    ctx.db.insert("events", { patientId, type, at: Date.now(), payload }),
+    type === "fall"
+      ? reportFall(ctx, patientId, { payload, prompt: false })
+      : reportSos(ctx, patientId, { payload, prompt: false }),
 });
 
 export const getTurns = query({

@@ -46,6 +46,8 @@ export default defineSchema({
         }),
       ),
     ),
+    // Set on the seeded demo patient so every screen can label its data as simulated.
+    isDemo: v.optional(v.boolean()),
     // Spoken agreement on the band's first boot.
     consent: v.optional(
       v.object({
@@ -126,6 +128,9 @@ export default defineSchema({
     source: v.optional(
       v.union(v.literal("pillbox"), v.literal("voice"), v.literal("manual")),
     ),
+    // Dose engine bookkeeping (convex/doses.ts): reminders at T and T+15.
+    remindersSent: v.optional(v.number()),
+    lastRemindedAt: v.optional(v.number()),
   }).index("by_patient_time", ["patientId", "scheduledFor"]),
 
   // Wristband movement per window; long quiet stretches prompt a gentle nudge to move.
@@ -191,7 +196,14 @@ export default defineSchema({
     ),
     acknowledgedBy: v.optional(v.string()),
     acknowledgedAt: v.optional(v.number()),
-  }).index("by_patient_status", ["patientId", "status"]),
+    // What raised it (AlertKind in lib/alerts.ts) and the row it's about.
+    // "ask"-tier alerts with a kind are prompts for the patient's band/hub to speak.
+    kind: v.optional(v.string()),
+    refId: v.optional(v.string()),
+    deliveredAt: v.optional(v.number()), // when the hub/band spoke an "ask" prompt
+  })
+    .index("by_patient_status", ["patientId", "status"])
+    .index("by_patient_created", ["patientId", "createdAt"]),
 
   summaries: defineTable({
     patientId: v.id("patients"),
@@ -200,9 +212,23 @@ export default defineSchema({
     periodEnd: v.number(),
     body: v.string(), // markdown
     evidenceIds: v.array(v.string()),
-    model: v.string(),
+    model: v.string(), // Claude model id, or "template" when Claude wasn't available
     createdAt: v.number(),
+    // Structured report (ReportSections in lib/reports/types.ts) for the clinician page.
+    sections: v.optional(v.any()),
   }).index("by_patient_kind", ["patientId", "kind"]),
+
+  // Every Claude prompt and response from report/summary jobs, for review before judging.
+  aiLogs: defineTable({
+    patientId: v.id("patients"),
+    job: v.string(),
+    model: v.string(),
+    prompt: v.string(),
+    response: v.string(),
+    ok: v.boolean(),
+    error: v.optional(v.string()),
+    at: v.number(),
+  }).index("by_patient", ["patientId", "at"]),
 
   // Voice agent conversation memory. One sessionId per wearable conversation.
   // "event" turns are things the wearable reported (dose due, check-in timer),
@@ -235,5 +261,9 @@ export default defineSchema({
     tokenHash: v.string(),
     lastSeenAt: v.optional(v.number()),
     firmwareVersion: v.optional(v.string()),
-  }).index("by_deviceId", ["deviceId"]),
+    label: v.optional(v.string()),
+  })
+    .index("by_deviceId", ["deviceId"])
+    .index("by_tokenHash", ["tokenHash"])
+    .index("by_patient", ["patientId"]),
 });
