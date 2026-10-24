@@ -131,19 +131,16 @@ export const prepareSummary = internalMutation({
       if (!member?.phone) continue;
       const mine = recent.filter((t) => t.memberId === memberId);
       const lastSummary = Math.max(0, ...mine.filter((t) => t.summaryId).map((t) => t.at));
-      const held = mine.filter((t) => t.heldForSummary && t.at > lastSummary).map((t) => ({ reason: t.body }));
-      texts.push({ memberId, to: member.phone, body: composeDailySummary({ ...input, held: heldReasons(held) }) });
+      const held = await Promise.all(
+        mine
+          .filter((t) => t.heldForSummary && t.at > lastSummary)
+          .map(async (t) => ({ reason: (t.alertId && (await ctx.db.get(t.alertId))?.reason) || "an alert" })),
+      );
+      texts.push({ memberId, to: member.phone, body: composeDailySummary({ ...input, held }) });
     }
     return { summaryId, preview, texts };
   },
 });
-
-/** Held alert texts read "Cadence · Heads-up for Margaret (11:40 PM): <reason> Reply STOP…"; keep just the reason. */
-function heldReasons(held: { reason: string }[]): { reason: string }[] {
-  return held.map(({ reason }) => ({
-    reason: reason.replace(/^Cadence · [^:]+\): /, "").replace(/ Reply STOP to opt out\.$/, ""),
-  }));
-}
 
 async function sendPrepared(
   prepared: { summaryId: Id<"summaries">; texts: { memberId: Id<"careTeamMembers">; to: string; body: string }[] },
