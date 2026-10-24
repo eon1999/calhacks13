@@ -1,6 +1,7 @@
 "use client";
 
 import { BandViewer } from "./band-viewer";
+import { HubNowCard } from "./hub-now-card";
 import { PatientOnboarding } from "./patient-onboarding";
 import { SafetyCard } from "./safety-card";
 import { useBandPairing } from "./use-band-pairing";
@@ -37,6 +38,7 @@ export function HubDemo() {
       </div>
       <section className="mt-12 space-y-4">
         <div className="mx-auto max-w-5xl space-y-3">
+          <HubNowCard agent={agent} />
           <SafetyCard patientId={agent.patient?.id} />
           <label className="flex items-center gap-3 text-base text-white">
             <input
