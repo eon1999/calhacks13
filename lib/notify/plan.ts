@@ -20,7 +20,8 @@ export interface RecentText {
 }
 
 export interface TextPlanEntry {
-  memberId: string;
+  /** Unset when the text goes to the simulator's test number rather than a team member. */
+  memberId?: string;
   to: string;
   /** Set when this recipient is deliberately not texted; recorded so the hub shows why. */
   skip?: string;
@@ -54,13 +55,20 @@ export function recipientsFor(tier: AlertTier, members: TextableMember[]): Texta
   return alertable;
 }
 
-/** Recipients plus, for each, whether to hold the text back. One text per phone number. */
+/**
+ * Recipients plus, for each, whether to hold the text back. One text per phone number.
+ * With a `testTo` number (the simulator's debug mode), every alert texts only that
+ * number, unthrottled, so testers see each trigger land without paging the real team.
+ */
 export function planTexts(
   tier: AlertTier,
   members: TextableMember[],
   recent: RecentText[],
   now: number,
+  testTo?: string,
 ): TextPlanEntry[] {
+  if (tier === "info") return [];
+  if (testTo) return [{ to: testTo }];
   const seen = new Set<string>();
   const plan: TextPlanEntry[] = [];
   for (const m of recipientsFor(tier, members)) {

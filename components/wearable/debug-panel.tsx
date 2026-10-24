@@ -19,7 +19,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EVENT_LABELS, type WearableEvent } from "@/lib/voice/events";
-import { useDebugActivity } from "./use-debug-activity";
+import { FamilyTextsSection } from "./family-texts-section";
+import { useDebugActivity, type DebugActivity } from "./use-debug-activity";
 import type { useVoiceAgent } from "./use-voice-agent";
 
 type Agent = ReturnType<typeof useVoiceAgent>;
@@ -67,9 +68,13 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function ActivityFeed({ agent }: { agent: Agent }) {
-  const { activity, error, refresh } = useDebugActivity(agent.patient?.id, agent.log.length);
+interface ActivityFeedProps {
+  activity: DebugActivity | null;
+  error: string | null;
+  refresh: () => Promise<void>;
+}
 
+function ActivityFeed({ activity, error, refresh }: ActivityFeedProps) {
   const rows = activity
     ? [
         ...activity.alerts.map((a) => ({
@@ -128,9 +133,10 @@ function ActivityFeed({ agent }: { agent: Agent }) {
   );
 }
 
-/** Tester controls: fire wearable events, canned speech, TTS test, and data reset. */
+/** Tester controls: fire wearable events, text the family, canned speech, TTS test, and data reset. */
 export function DebugPanel({ agent, busy }: DebugPanelProps) {
   const [message, setMessage] = useState(DEFAULT_TEST_MESSAGE);
+  const feed = useDebugActivity(agent.patient?.id, agent.log.length);
 
   function confirmReset() {
     if (window.confirm("Clear today's doses, check-ins, alerts and voice history for this patient?")) {
@@ -161,6 +167,17 @@ export function DebugPanel({ agent, busy }: DebugPanelProps) {
             ))}
           </div>
         </Section>
+
+        {agent.patient && (
+          <Section title="Text the family">
+            <FamilyTextsSection
+              patientId={agent.patient.id}
+              patientName={agent.patient.preferredName ?? agent.patient.name}
+              activity={feed.activity}
+              refresh={feed.refresh}
+            />
+          </Section>
+        )}
 
         <Section title="Patient says">
           <div className="flex flex-wrap gap-1.5">
@@ -195,7 +212,7 @@ export function DebugPanel({ agent, busy }: DebugPanelProps) {
           </Button>
         </Section>
 
-        <ActivityFeed agent={agent} />
+        <ActivityFeed activity={feed.activity} error={feed.error} refresh={feed.refresh} />
 
         <Section title="Settings">
           <label className="flex items-center gap-2 text-sm">

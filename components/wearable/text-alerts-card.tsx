@@ -85,6 +85,13 @@ export function TextAlertsCard({ patientId }: TextAlertsCardProps) {
           </p>
         )}
 
+        {overview?.testTextTo && (
+          <p className="rounded-md border border-destructive/30 px-2 py-1.5 text-xs text-destructive">
+            Debug: every alert texts the test number {overview.testTextTo} instead of the people below. Turn it off in
+            Debug tools → Text the family.
+          </p>
+        )}
+
         {overview && overview.recipients.length === 0 && (
           <p className="text-muted-foreground">No family or caregivers on the team yet.</p>
         )}

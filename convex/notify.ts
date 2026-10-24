@@ -115,7 +115,7 @@ export const textAlert = internalAction({
     if (!found) return;
     const { alert, patient, members, recent } = found;
 
-    const plan = planTexts(alert.tier, members.map(textable), recent, Date.now());
+    const plan = planTexts(alert.tier, members.map(textable), recent, Date.now(), patient.testTextTo);
     if (plan.length === 0) return;
 
     const name = patient.preferredName ?? patient.name;
@@ -125,7 +125,7 @@ export const textAlert = internalAction({
         const base = {
           patientId: patient._id,
           alertId,
-          memberId: p.memberId as Id<"careTeamMembers">,
+          memberId: p.memberId as Id<"careTeamMembers"> | undefined,
           to: p.to,
           body,
         };
@@ -168,8 +168,10 @@ export const overview = query({
       .order("desc")
       .take(RECENT_TEXTS);
 
+    const patient = await ctx.db.get(patientId);
     return {
       live: twilioConfig(process.env) !== null,
+      testTextTo: patient?.testTextTo ? maskPhone(patient.testTextTo) : null,
       recipients,
       recent: recent.map((t) => ({
         id: t._id,

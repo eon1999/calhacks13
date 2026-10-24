@@ -35,6 +35,8 @@ export default defineSchema({
         notes: v.optional(v.string()),
       }),
     ),
+    // Simulator debug mode: every alert texts this number (E.164) instead of the care team.
+    testTextTo: v.optional(v.string()),
   }),
 
   careTeamMembers: defineTable({

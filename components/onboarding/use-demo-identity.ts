@@ -8,7 +8,7 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 // TODO(auth): replace with Clerk's useUser(); Convex functions then read
 // ctx.auth instead of taking a userId argument.
 
-const KEY = "cadence.demoUser";
+export const DEMO_USER_KEY = "cadence.demoUser";
 const listeners = new Set<() => void>();
 const memory: { local: string | null; tab: string | null } = { local: null, tab: null };
 
@@ -18,7 +18,7 @@ export interface DemoIdentity {
 
 function get(store: () => Storage): string | null {
   try {
-    return store().getItem(KEY);
+    return store().getItem(DEMO_USER_KEY);
   } catch {
     return null;
   }
@@ -26,7 +26,7 @@ function get(store: () => Storage): string | null {
 
 function set(store: () => Storage, value: string): void {
   try {
-    store().setItem(KEY, value);
+    store().setItem(DEMO_USER_KEY, value);
   } catch {
     // Private mode: the id lives for this page only.
   }

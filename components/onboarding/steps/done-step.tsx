@@ -53,9 +53,9 @@ export function DoneStep({ patientName, recoveryLabel, medicationCount, paired, 
       </dl>
 
       <div className="mt-12 flex flex-wrap items-center gap-4">
-        <GlassButton href="/care">Go to the care dashboard</GlassButton>
-        <Link href="/hub" className="mono-label text-plum-muted hover:text-violet">
-          Open the band simulator ↗
+        <GlassButton href="/hub?demo=1">Put the band on {patientName}</GlassButton>
+        <Link href="/demo" className="mono-label text-plum-muted hover:text-violet">
+          Back to the demo guide
         </Link>
       </div>
     </div>

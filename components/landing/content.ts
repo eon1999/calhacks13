@@ -80,7 +80,7 @@ export interface Surface {
 export const SURFACES: Surface[] = [
   { href: "/hub", title: "Wearable simulator", tags: ["Voice", "Live"], hue: ["#9047ff", "#ffb4e6"], glyph: "◯" },
   { href: "/care", title: "Care dashboard", tags: ["Caregivers", "Alerts"], hue: ["#4a1aa8", "#7fd3ff"], glyph: "♡" },
-  { href: "/demo", title: "Demo controls", tags: ["Seed", "Events"], hue: ["#2a1647", "#c79bff"], glyph: "◐" },
+  { href: "/demo", title: "Try the demo", tags: ["Setup", "Texts"], hue: ["#2a1647", "#c79bff"], glyph: "◐" },
   { href: "/settings", title: "Settings", tags: ["Schedule", "Voice"], hue: ["#6b2fe0", "#f5efff"], glyph: "⌁" },
 ];
 

@@ -78,7 +78,7 @@ export function BandStep({ userId, patientId, patientName, paired, onNext, onBac
             <PrimaryButton type="submit" disabled={!valid || saving}>
               {saving ? "Pairing…" : "Pair band"}
             </PrimaryButton>
-            <a href="/hub" target="_blank" rel="noreferrer" className="mono-label text-plum-muted underline-offset-4 hover:text-violet hover:underline">
+            <a href="/hub?demo=1" target="_blank" rel="noreferrer" className="mono-label text-plum-muted underline-offset-4 hover:text-violet hover:underline">
               Open the band simulator ↗
             </a>
           </div>

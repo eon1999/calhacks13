@@ -5,6 +5,30 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Family text triggers in the debugger, demo flow for judges
+
+**Debugger: Text the family** (`/hub` → Debug tools, `components/wearable/family-texts-section.tsx`)
+- A **test phone** input sets `patients.testTextTo`. While it's set, **every** alert for that patient texts only that number, unthrottled, instead of the care team (`planTexts(..., testTo)` in `lib/notify/plan.ts`, unit-tested). That covers the trigger buttons below *and* alerts the agent raises itself (Fall, SOS, a red-flag phrase), so you can test the real pipeline without paging anyone's real phone. **Off** clears it.
+- Three triggers raise an alert directly, without Claude: **Urgent: fall**, **Heads-up: wound**, **Please check in** (`ask`). They're disabled until a test number is set.
+- The last three texts (status, masked number, body, Twilio's reason) show under the triggers. "What the agent wrote" and the activity endpoint now include `texts` and `testTextTo`.
+- New debug-gated routes: `POST /api/debug/test-phone {patientId, phone}` (empty phone turns it off; a bad number is a 400) and `POST /api/debug/alert {patientId, tier, reason}`. Convex: `debug.setTestTextTo`, `debug.raiseAlert`.
+
+**Demo flow** (what a judge does)
+- `/demo` is now a live three-step guide (`components/demo/demo-guide.tsx`): **Set it up** (→ `/start`, "put your own mobile in") → **Put the band on** (→ `/hub?demo=1` in a new tab) → **Make something happen** (shows the last alert text, or why it couldn't go). Each step ticks itself off from Convex and localStorage, and it updates live when setup changes in another tab. **Start over for the next person** clears this browser's setup, band and identity (nothing is deleted on the server).
+- `/hub?demo=1` is the judge's band: no debug tools. Until paired, it shows only the pairing code (and doesn't load or auto-remind the seeded patient). Once paired, a **Try it** card (fall, SOS, "the wound looks red", check-in) replaces the debugger. `/hub` with no param is unchanged (debug mode); each view links to the other.
+- Setup's exits now point into the demo: the band step opens `/hub?demo=1`, and the done step's primary button is **Put the band on {name}** (it used to go to the empty `/care` stub), plus "Back to the demo guide".
+- `/hub` reads `searchParams` inside `<Suspense>` (Next 16 Cache Components flags it otherwise); it's now a partial prerender.
+
+**Verified:** `tsc`, `eslint`, 77 unit tests (3 new), and `next build`. In the browser against the local Convex deployment with Twilio (trial) on: test number saved and normalised; Heads-up trigger → text to the test number; agent-raised urgent (fall, then "I fell… can't get up") → text to the test number only, not the team; a fresh judge run (Start over → setup with a phone → band code in a second tab → band flipped live → "the wound looks red") → heads-up text to the judge's number, shown on the band's Text alerts card and on `/demo` step 3. Every send used fictional 555 numbers, so Twilio rejected them with 572002 (trial, unverified number), which is the expected result and is shown in the UI.
+- This left a test patient, "Robert Judge" (owner Jamie Judge), in the local deployment.
+
+**Open**
+- **Twilio trial:** a judge's phone only receives texts if it's verified in the Twilio console, and the trial sends the `sms_internal_alerts` template rather than Cadence's message. Upgrade the account (and do A2P 10DLC or toll-free verification) before a live demo where judges use their own phones.
+- `/demo` and `/hub?demo=1` still depend on debug-only routes in one place: "Say the code" (`/api/debug/speak`) needs `CADENCE_DEBUG=1` in production.
+- A forgotten test number overrides the team. The Text alerts card shows a red "Debug: every alert texts the test number…" note while one is set; turn it **Off** when you're done.
+
+---
+
 ## 2026-10-24: Voice agent stays on task
 
 The voice agent was drifting into small talk. `lib/voice/prompt.ts` now has a **Staying on task** section. Cadence is still warm, but every reply should serve recovery (meds, symptoms, pain, mobility, sleep, mood). It doesn't start small talk or ask questions just to keep the patient talking. When the patient goes off-topic, it acknowledges briefly and steers back. It declines trivia and general questions. Once the reason for the conversation is handled, it closes in one sentence. The persona line changed from "caring friend" to "caring nurse who has a few minutes".

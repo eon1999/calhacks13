@@ -9,6 +9,7 @@ import type { SlotStatus } from "@/lib/schedule";
 import { DebugPanel } from "./debug-panel";
 import { PairingCard } from "./pairing-card";
 import { TextAlertsCard } from "./text-alerts-card";
+import { TryItCard } from "./try-it-card";
 import { useBandPairing } from "./use-band-pairing";
 import { useRecorder } from "./use-recorder";
 import { useVoiceAgent, type AgentStatus } from "./use-voice-agent";
@@ -28,10 +29,15 @@ const SLOT_VARIANT: Record<SlotStatus, "default" | "secondary" | "outline" | "de
   missed: "destructive",
 };
 
-export function WearableSimulator() {
+/** "debug": tester tools, falls back to the seeded patient. "demo": what a judge sees, nothing until paired. */
+export type SimulatorMode = "debug" | "demo";
+
+export function WearableSimulator({ mode = "debug" }: { mode?: SimulatorMode }) {
   const band = useBandPairing();
-  // Once paired, the band talks to its own patient; until then, the demo patient.
-  const agent = useVoiceAgent(band.pairing.state === "paired" ? band.pairing.patientId : undefined);
+  const pairedTo = band.pairing.state === "paired" ? band.pairing.patientId : undefined;
+  const paired = pairedTo !== undefined;
+  // Once paired, the band talks to its own patient; until then (debug only), the demo patient.
+  const agent = useVoiceAgent(pairedTo, paired || mode === "debug");
   const recorder = useRecorder();
   const [typed, setTyped] = useState("");
 
@@ -64,6 +70,21 @@ export function WearableSimulator() {
     <PairingCard pairing={band.pairing} error={band.error} agent={agent} busy={busy} onForget={band.forget} />
   );
 
+  if (mode === "demo" && !paired) {
+    return (
+      <div className="mx-auto max-w-md space-y-4">
+        {pairingCard}
+        <p className="text-center text-sm text-muted-foreground">
+          Waiting to be paired. Type the code into the band step of{" "}
+          <a href="/start" target="_blank" rel="noreferrer" className="underline">
+            setup
+          </a>
+          ; this page switches over by itself.
+        </p>
+      </div>
+    );
+  }
+
   if (!agent.patient) {
     return (
       <div className="mx-auto max-w-md space-y-4">
@@ -74,7 +95,7 @@ export function WearableSimulator() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">{agent.loadError ?? "Loading…"}</p>
-          <Button onClick={() => void agent.seed()}>Seed demo patient</Button>
+          {mode === "debug" && <Button onClick={() => void agent.seed()}>Seed demo patient</Button>}
         </CardContent>
       </Card>
       </div>
@@ -123,7 +144,7 @@ export function WearableSimulator() {
 
         {band.pairing.state === "paired" && <TextAlertsCard patientId={band.pairing.patientId} />}
 
-        <DebugPanel agent={agent} busy={busy} />
+        {mode === "demo" ? <TryItCard agent={agent} busy={busy} /> : <DebugPanel agent={agent} busy={busy} />}
       </div>
 
       <div className="space-y-4">
