@@ -24,7 +24,12 @@ export async function GET(request: NextRequest): Promise<Response> {
     return Response.json({
       success: true,
       data: {
-        patient: { id: ctx.patient._id, name: ctx.patient.name, timeZone: ctx.patient.timeZone },
+        patient: {
+          id: ctx.patient._id,
+          name: ctx.patient.name,
+          preferredName: ctx.patient.preferredName ?? null,
+          timeZone: ctx.patient.timeZone,
+        },
         slots: ctx.slots,
       },
     });

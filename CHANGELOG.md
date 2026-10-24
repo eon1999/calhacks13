@@ -5,6 +5,120 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Branch previews build on Vercel
+
+Preview builds failed at `npx convex deploy` because `CONVEX_DEPLOY_KEY` is set for Production only. `vercel.json` now sets the build command: production still runs `convex deploy --cmd 'npm run build'`, and every other environment runs plain `npm run build`. `vercel.json` overrides the dashboard's Build Command.
+- **Previews use the production Convex backend.** They need `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` enabled for Preview in Vercel.
+- A preview runs against production data and production's deployed Convex functions. Anything on the branch that changes `convex/` won't work in the preview until it's merged and deployed.
+- `ANTHROPIC_API_KEY`, `CARTESIA_API_KEY` and `CADENCE_DEBUG` are still Production-only in Vercel, so a preview's voice and debug routes report them missing.
+- Preview URLs sit behind Vercel's login, so install the PWA on a phone from production (`calhacks13.vercel.app`).
+
+---
+
+## 2026-10-24: Cadence installs as a phone app (PWA)
+
+The band is getting less capable, so the phone takes over voice and display. `/hub` already does that job, so Cadence is now installable from the browser ("Add to Home Screen"). No Apple developer account or app store is needed, on iPhone or Android.
+- **Manifest** (`app/manifest.ts`, served at `/manifest.webmanifest`): name "Cadence", `standalone`, opens at `/hub?demo=1`, dusk-violet `#4a12a3` theme and background.
+- **Icons** (`public/icons/`): a white pulse line on a violet gradient. `icon.svg` is the source. `icon-192.png`, `icon-512.png` (also used as `maskable`, since it's full-bleed) and `apple-touch-icon.png` (180) were rendered from it with sharp. Re-render them if the SVG changes.
+- **iOS** (`app/layout.tsx`): `appleWebApp` (capable, title, `black` status bar) and the apple-touch icon, because iOS ignores the manifest's icons. `viewport.themeColor` matches the manifest.
+
+**Verified:** `next build` (tsc included), eslint on the touched files, 184 unit tests. On `next start` at 375px wide, the manifest is served as `application/manifest+json`, all head tags and icons load, `/hub?demo=1` renders with no horizontal scroll, and there are no console errors. Not yet tried on a real phone.
+
+**Open**
+- No service worker, so there's no offline page or web push. Chrome no longer needs one to offer install. iOS only allows web push for home-screen apps (16.4+), and that needs a service worker, VAPID keys and a subscriptions table. Until then, spoken prompts only play while the app is open, and texts and calls cover urgent alerts.
+- iPhone browsers have no Web Bluetooth. If the band ever has to relay through the phone over Bluetooth, use Android Chrome or go native.
+- The phone needs HTTPS (or localhost) for the mic and for installing. Use the deployed URL, or a tunnel to the dev server.
+
+---
+
+## 2026-10-24: Band firmware (ESP32), written ahead of the hardware
+
+`firmware/band` is a PlatformIO project for the wristband: steps, heart rate, falls and SOS, posted to the device API. The LED and buzz follow the heartbeat reply. No voice on the band: the phone does that. See `firmware/band/README.md`.
+- **Core logic** (`lib/cadence_core`, no Arduino code): `StepCounter` (gravity removed, runs of 4 so waving isn't walking), `FallDetector` (free fall, then a ≥2.5 g impact within 1 s, then 1.5 s still), `BeatDetector` (BPM from the MAX30102's raw IR wave, 0 off-wrist or stale), `ActivityWindow` (per-window counts, cleared only after the server takes them), JSON writers and a heartbeat reply parser, and `synthetic` signals.
+- **Tests** (`npm run firmware:test`): 34 cases, built with g++ (`-Wall -Wextra -Werror`) on this machine against synthetic walking, falls, bumps and pulses from 50 to 150 bpm. They use a tiny harness in `test/native/check.h`, so nothing needs downloading.
+- **ESP32 side** (`src/`): a 50 Hz sensor task, separate from the HTTP loop, so a fall isn't missed during a slow request. MPU6050 (raw I2C, ±8 g) and MAX30102 (SparkFun library, 50 sps) drivers. Event retry every 5 s (events raised during a request aren't lost), LED patterns that go quiet if heartbeats stop for 90 s, and a 2 s SOS hold on the BOOT button. A C++ review found no compile problems against Arduino-ESP32 2.0.x. It did find nine runtime issues, all fixed: stale buzzing, a chirp stuck on after 24.8 days of uptime, out-of-order pulse timestamps, a lost second event, the sensor task's stack size, the MAX30102 library resetting the I2C pins, a fingertip-only contact threshold (now `config::kNoContactIr`), unverified TLS (now warned at boot), and knocks counting as falls.
+- **`band-sim` build**: the same firmware on a bare ESP32 with made-up sensors, driven from the serial monitor (`w` walk, `f` fall, `s` SOS, `o` off wrist). It posts a window every minute.
+- `npm run fake-band` (previous entry) still covers the server side with no board at all.
+
+**Open:** not yet compiled for ESP32 (no PlatformIO here) or run on a board. Thresholds are tuned on synthetic signals and need real wrist data, especially `kNoContactIr`, and whether slow slumps still count as falls. HTTPS skips certificate checks unless `CADENCE_ROOT_CA` is set. Wi-Fi details are compiled in. No battery, sleep or OTA. The pillbox has no firmware yet.
+
+---
+
+## 2026-10-24: Fake band for building without hardware
+
+`npm run fake-band` stands in for the wristband. It posts to the real `/device/activity`, `/device/event` and `/device/heartbeat` routes with a device token from `/settings`, so auth, `deviceId` matching and schema errors all get exercised.
+- **Generator** (`lib/fake-band.ts`, tested in `lib/fake-band.test.ts`): `normal`, `resting` and `inactive` scenarios. Counts are per window, BPM rises with activity, about 1 window in 10 has no pulse, and falls peak at 2.5–4.5 g.
+- **CLI** (`scripts/fake-band.mts`): streams windows and heartbeats (`--speed` compresses time, `--fall-after` adds one fall), or sends a single `fall` / `sos` / `lid`. It reads `FAKE_BAND_ID`, `FAKE_BAND_TOKEN` and the site URL from `.env.local`.
+- `tsconfig.json` gains `allowImportingTsExtensions` so Node can run the script directly (Node 24 strips types).
+- README's Device API section now says counts are per window and the band needs no clock.
+
+---
+
+## 2026-10-24: feat/voice-on-task merged with main
+
+Both sides kept. Where they overlapped:
+- **Text routing** (`lib/notify/plan.ts`): `planTexts(tier, members, recent, now, timeZone = "UTC", testTo?)` takes main's quiet hours and this branch's debug test phone. The test phone still wins (every alert, unthrottled, ignoring quiet hours). The hub overview returns `testTextTo` alongside main's `patientName`, `urgentGap` and `summaryRecipients`.
+- **Debug alerts** (`convex/debug.ts` → `raiseAlert`) use main's `raiseAlert` with `kind: "voice_agent"`, so they're texted like a real alert. While a test phone is set, `convex/phone.ts` `callUrgent` rings only that number too, so urgent test triggers never phone the real emergency contacts.
+- **`/demo` stays main's team control panel. The judge guide moved to `/try`.** The hub's "Demo guide" link, setup's "Back to the demo guide" and the landing "Try the demo" card point there. The guide's step 3 reads main's `kind === "alert"` on texts (it was `!test`).
+- **`/hub`** keeps main's frame (dusk sky, auth controls) and `HubDemo` (3D band, patient onboarding, now and safety cards, spoken prompts), which owns `band` and `agent` and passes them down. It also takes this branch's mode: `/hub?demo=1` hides onboarding and debug tools, loads nothing until paired, and shows **Try it**. The heading and the Demo view, Demo guide and Debug tools links sit in `HubDemo`, in white. `WearableSimulator({ band, agent, mode })` keeps the restyled lilac cards (now 90% opaque so they read on the sky), the chat bubbles and the right-column layout. Text alerts show for any loaded patient (main), not only a paired one.
+- **`OnboardingShell`** shows main's `AuthControls` next to the label. The `wide` option this branch added for the hub is gone, because the hub no longer uses the shell.
+- **`ChoiceCard` is back**, because main's health step and preferences editor use it. Setup's relationship, surgery and role pickers stay dropdowns. The frequency dropdown and medicine suggestions live in main's `MedicationEditor`.
+- **Landing cards**: main's reframed list, with Demo controls swapped for "Try the demo" (`/try`). Demo controls stays reachable from the app nav and "Seed a demo".
+
+**Verified:** `npm install` (main added Clerk and three.js), `tsc` (app and `convex/`), `eslint`, unit tests, `next build`. Browser checks of `/hub`, `/hub?demo=1`, `/try` and `/demo` are noted in the PR.
+
+---
+
+## 2026-10-24: Simulator matches the design, headings in sentence case
+
+**Simulator** (`/hub` and `/hub?demo=1`) now uses the landing/setup look instead of grey shadcn defaults.
+- It sits in `OnboardingShell` (the wordmark header and lilac clouds) via a new `wide` prop that drops the aside column, under a display heading with a Debug or Demo tag. The links between views are mono labels.
+- `.cadence-theme` in `app/globals.css` points the shadcn tokens (`--primary`, `--card`, `--border`, …) at the palette, so every Card, Button and Badge inside the hub becomes lilac glass with violet accents without per-component edits. It's scoped to the hub, so other pages are untouched.
+- **The band** has a plum bezel, a strap, a lilac face and the glass-pill mic, with the status in the display serif. It's pinned on the left (`md:sticky`) with the typed-input box under it.
+- **The right column** holds Today's medicines (time in violet mono, name in serif), then Conversation, then Try it or Debug tools, then Band setup and Text alerts side by side. The conversation is chat bubbles: the patient on the right, Cadence on the left, device events as labelled dividers.
+- Card titles, section labels and inputs share classes in `components/wearable/styles.ts`. `cardTitle` spells the mono label out as utilities, because `.mono-label` (a component class) loses to CardTitle's own font utilities.
+
+**Display headings are sentence case.** `.display` no longer uppercases. The source text was already written in sentence case, so the landing page, setup, the demo guide and the simulator now read "*What* do they take, and when?" instead of "*What* DO THEY TAKE, AND WHEN?". Line height went from 0.86 to 0.92 so descenders don't collide. Mono labels are still all caps.
+
+**Verified:** `tsc`, `eslint`, unit tests. In the browser: `/hub` (debug) with a typed turn rendered as bubbles; `/hub?demo=1` with the auto-reminder event divider and the Try it card; 375px width with no horizontal scroll (band and cards inside 20px gutters); the landing page and `/demo` headings computed as `text-transform: none`; no console errors.
+- The dev server missed the first `globals.css` change until the file was touched again, so if headings still look uppercase, touch the file or restart `next dev`.
+
+## 2026-10-24: Setup pickers are dropdowns
+
+Setup's button groups are now dropdowns, so each step is a short column of fields instead of a wall of pills and cards.
+- **Medicines** (`steps/meds-step.tsx`): **How often** is a dropdown of the presets. Adding or removing a time by hand switches it to **Custom times**, and the time chips and "+ Add time" still sit below it. The **Medicine** field suggests 17 common post-op medicines (painkillers, antibiotics, blood thinners, anti-nausea, stool softeners) through a `<datalist>`, and you can still type anything or scan the label.
+- **Their recovery**: the surgery is a dropdown. "Something else" still opens the free-text field.
+- **You**: "You are their…" is a dropdown.
+- **Care team**: the invite role is a dropdown. The role's one-line description shows under it.
+- `Select` in `components/onboarding/ui.tsx` now draws its own chevron, and its `className` goes on the wrapper. `ChoiceCard` is gone because nothing uses it.
+- Action buttons stay buttons, since each one does something when you click it: the debugger's events and phrases, the family-text triggers, and **Try it**.
+
+**Verified:** `tsc`, `eslint`, 77 unit tests. In the browser, each dropdown shows the saved value. Picking a preset sets the times, and adding a time flips it to Custom times. "Something else" opens the text field, and the role hint follows the selection. There were no console errors.
+
+## 2026-10-24: Family text triggers in the debugger, demo flow for judges
+
+**Debugger: Text the family** (`/hub` → Debug tools, `components/wearable/family-texts-section.tsx`)
+- A **test phone** input sets `patients.testTextTo`. While it's set, **every** alert for that patient texts only that number, unthrottled, instead of the care team (`planTexts(..., testTo)` in `lib/notify/plan.ts`, unit-tested). That covers the trigger buttons below *and* alerts the agent raises itself (Fall, SOS, a red-flag phrase), so you can test the real pipeline without paging anyone's real phone. **Off** clears it.
+- Three triggers raise an alert directly, without Claude: **Urgent: fall**, **Heads-up: wound**, **Please check in** (`ask`). They're disabled until a test number is set.
+- The last three texts (status, masked number, body, Twilio's reason) show under the triggers. "What the agent wrote" and the activity endpoint now include `texts` and `testTextTo`.
+- New debug-gated routes: `POST /api/debug/test-phone {patientId, phone}` (empty phone turns it off; a bad number is a 400) and `POST /api/debug/alert {patientId, tier, reason}`. Convex: `debug.setTestTextTo`, `debug.raiseAlert`.
+
+**Demo flow** (what a judge does)
+- `/demo` is now a live three-step guide (`components/demo/demo-guide.tsx`): **Set it up** (→ `/start`, "put your own mobile in") → **Put the band on** (→ `/hub?demo=1` in a new tab) → **Make something happen** (shows the last alert text, or why it couldn't go). Each step ticks itself off from Convex and localStorage, and it updates live when setup changes in another tab. **Start over for the next person** clears this browser's setup, band and identity (nothing is deleted on the server).
+- `/hub?demo=1` is the judge's band: no debug tools. Until paired, it shows only the pairing code (and doesn't load or auto-remind the seeded patient). Once paired, a **Try it** card (fall, SOS, "the wound looks red", check-in) replaces the debugger. `/hub` with no param is unchanged (debug mode); each view links to the other.
+- Setup's exits now point into the demo: the band step opens `/hub?demo=1`, and the done step's primary button is **Put the band on {name}** (it used to go to the empty `/care` stub), plus "Back to the demo guide".
+- `/hub` reads `searchParams` inside `<Suspense>` (Next 16 Cache Components flags it otherwise); it's now a partial prerender.
+
+**Verified:** `tsc`, `eslint`, 77 unit tests (3 new), and `next build`. In the browser against the local Convex deployment with Twilio (trial) on: test number saved and normalised; Heads-up trigger → text to the test number; agent-raised urgent (fall, then "I fell… can't get up") → text to the test number only, not the team; a fresh judge run (Start over → setup with a phone → band code in a second tab → band flipped live → "the wound looks red") → heads-up text to the judge's number, shown on the band's Text alerts card and on `/demo` step 3. Every send used fictional 555 numbers, so Twilio rejected them with 572002 (trial, unverified number), which is the expected result and is shown in the UI.
+- This left a test patient, "Robert Judge" (owner Jamie Judge), in the local deployment.
+
+**Open**
+- **Twilio trial:** a judge's phone only receives texts if it's verified in the Twilio console, and the trial sends the `sms_internal_alerts` template rather than Cadence's message. Upgrade the account (and do A2P 10DLC or toll-free verification) before a live demo where judges use their own phones.
+- `/demo` and `/hub?demo=1` still depend on debug-only routes in one place: "Say the code" (`/api/debug/speak`) needs `CADENCE_DEBUG=1` in production.
+- A forgotten test number overrides the team. The Text alerts card shows a red "Debug: every alert texts the test number…" note while one is set; turn it **Off** when you're done.
+
+---
+
 ## 2026-10-24: Urgent alerts phone the emergency contacts; landing page reframed for families
 
 **Urgent-alert phone calls** (`convex/phone.ts`, `lib/phone/plan.ts`)

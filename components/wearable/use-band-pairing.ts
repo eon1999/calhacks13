@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api";
 // The simulated band's identity: a device id plus a secret only the band knows.
 // Convex only ever sees the secret's SHA-256 (see convex/pairing.ts).
 
-const KEY = "cadence.band";
+export const BAND_STORAGE_KEY = "cadence.band";
 
 interface BandIdentity {
   deviceId: string;
@@ -22,7 +22,7 @@ async function sha256Hex(text: string): Promise<string> {
 async function loadBand(): Promise<BandIdentity> {
   let stored: { deviceId: string; secret: string } | null = null;
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(BAND_STORAGE_KEY);
     stored = raw ? (JSON.parse(raw) as { deviceId: string; secret: string }) : null;
   } catch {
     stored = null;
@@ -30,7 +30,7 @@ async function loadBand(): Promise<BandIdentity> {
   if (!stored?.deviceId || !stored.secret) {
     stored = { deviceId: `sim-${crypto.randomUUID().slice(0, 8)}`, secret: crypto.randomUUID() };
     try {
-      localStorage.setItem(KEY, JSON.stringify(stored));
+      localStorage.setItem(BAND_STORAGE_KEY, JSON.stringify(stored));
     } catch {
       // Storage blocked: the band gets a new identity on each load.
     }
@@ -67,7 +67,7 @@ export function useBandPairing(): { pairing: BandPairing; forget: () => void; er
 
   const forget = useCallback(() => {
     try {
-      localStorage.removeItem(KEY);
+      localStorage.removeItem(BAND_STORAGE_KEY);
     } catch {
       // ignore
     }

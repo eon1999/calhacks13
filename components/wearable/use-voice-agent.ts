@@ -16,6 +16,8 @@ export interface LogEntry {
 export interface PatientInfo {
   id: string;
   name: string;
+  /** What the band calls them, if set in setup. */
+  preferredName: string | null;
   timeZone: string;
 }
 
@@ -57,8 +59,10 @@ function playWav(blob: Blob): Promise<void> {
 /**
  * Client for the wearable voice endpoints (/api/voice/*).
  * `patientId` is the patient the band is paired to; without one the demo's first patient is used.
+ * `null` means no patient has been chosen yet (the /hub demo creates one), so it loads nothing.
+ * With `enabled` false it loads no patient (and so never polls), e.g. an unpaired band in the demo view.
  */
-export function useVoiceAgent(patientId?: string | null) {
+export function useVoiceAgent(patientId?: string | null, enabled = true) {
   const [patient, setPatient] = useState<PatientInfo | null>(null);
   const [slots, setSlots] = useState<DoseSlot[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -100,9 +104,10 @@ export function useVoiceAgent(patientId?: string | null) {
   }, [patientId]);
 
   useEffect(() => {
+    if (!enabled) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch
     refresh().catch(() => setLoadError("Could not reach the server"));
-  }, [refresh]);
+  }, [refresh, enabled]);
 
   const seed = useCallback(async () => {
     const res = await fetch("/api/demo/seed", { method: "POST" });

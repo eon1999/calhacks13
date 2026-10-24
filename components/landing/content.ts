@@ -74,7 +74,7 @@ export const SURFACES: Surface[] = [
   { href: "/care", title: "Family dashboard", tags: ["Family", "Alerts"], hue: ["#4a1aa8", "#7fd3ff"], glyph: "♡" },
   { href: "/hub", title: "Their wristband", tags: ["Voice", "Live"], hue: ["#9047ff", "#ffb4e6"], glyph: "◯" },
   { href: "/settings", title: "Who gets told", tags: ["Texts", "Quiet hours"], hue: ["#6b2fe0", "#f5efff"], glyph: "⌁" },
-  { href: "/demo", title: "Demo controls", tags: ["Seed", "Events"], hue: ["#2a1647", "#c79bff"], glyph: "◐" },
+  { href: "/try", title: "Try the demo", tags: ["Setup", "Texts"], hue: ["#2a1647", "#c79bff"], glyph: "◐" },
 ];
 
 export interface DayMoment {

@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { AuthControls } from "@/components/auth/auth-controls";
@@ -8,7 +9,7 @@ import { Wordmark } from "@/components/landing/wordmark";
 // Form primitives for onboarding, in the landing page's lilac/plum language:
 // display-serif headlines, mono labels, glass pill buttons.
 
-export function OnboardingShell({ aside, children }: { aside?: ReactNode; children: ReactNode }) {
+export function OnboardingShell({ aside, children, label = "Setup" }: { aside?: ReactNode; children: ReactNode; label?: string }) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-lilac text-plum">
       {/* soft dusk clouds, echoing the landing sky */}
@@ -23,7 +24,7 @@ export function OnboardingShell({ aside, children }: { aside?: ReactNode; childr
           <Wordmark />
         </Link>
         <div className="flex items-center gap-3">
-          <span className="mono-label text-plum-muted">Setup</span>
+          <span className="mono-label text-plum-muted">{label}</span>
           <AuthControls />
         </div>
       </header>
@@ -98,8 +99,14 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea {...props} className={`${control} min-h-24 py-3 ${props.className ?? ""}`} />;
 }
 
-export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`${control} h-12 appearance-none ${props.className ?? ""}`} />;
+/** A native dropdown with our own chevron (the browser's is hidden by `appearance-none`). */
+export function Select({ className = "", ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className={`relative ${className}`}>
+      <select {...props} className={`${control} h-12 cursor-pointer appearance-none pr-11`} />
+      <ChevronDown aria-hidden className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-plum-muted" />
+    </div>
+  );
 }
 
 /** A selectable card (procedure, role, relationship). */

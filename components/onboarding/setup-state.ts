@@ -32,7 +32,7 @@ export interface SetupDraft {
   careNotes: string;
 }
 
-interface SetupProgress {
+export interface SetupProgress {
   step: StepId;
   patientId: string | null;
   draft: SetupDraft;
@@ -40,7 +40,7 @@ interface SetupProgress {
   visited: StepId[];
 }
 
-const KEY = "cadence.setup";
+export const SETUP_STORAGE_KEY = "cadence.setup";
 
 function emptyDraft(): SetupDraft {
   return {
@@ -64,9 +64,10 @@ function initial(): SetupProgress {
   return { step: "you", patientId: null, draft: emptyDraft(), visited: [] };
 }
 
-function load(): SetupProgress | null {
+/** Saved wizard progress, or null. Read-only callers (the /demo guide) use this too. */
+export function loadSetupProgress(): SetupProgress | null {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(SETUP_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<SetupProgress>;
     if (!parsed.step || !STEPS.some((s) => s.id === parsed.step)) return null;
@@ -78,7 +79,7 @@ function load(): SetupProgress | null {
 
 function save(progress: SetupProgress): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(progress));
+    localStorage.setItem(SETUP_STORAGE_KEY, JSON.stringify(progress));
   } catch {
     // Storage blocked: setup still works, it just won't survive a refresh.
   }
@@ -90,7 +91,7 @@ export function useSetupProgress() {
   const [restored, setRestored] = useState(false);
 
   useEffect(() => {
-    const saved = load();
+    const saved = loadSetupProgress();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- restore once from storage after hydration
     if (saved) setProgress(saved);
     setRestored(true);

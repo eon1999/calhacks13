@@ -57,10 +57,14 @@ export const callUrgent = internalAction({
     if (!found) return;
     const { alert, patient, members } = found;
 
-    const targets = planUrgentCalls(
-      patient.emergencyContacts ?? [],
-      members.map((m) => ({ id: m._id, name: m.name, role: m.role, phone: m.phone, urgentAlerts: m.urgentAlerts })),
-    );
+    // With the simulator's debug test phone set (convex/debug.ts), ring only that
+    // number, like texts do, so testing never phones the real emergency contacts.
+    const targets = patient.testTextTo
+      ? [{ name: "there", to: patient.testTextTo }]
+      : planUrgentCalls(
+          patient.emergencyContacts ?? [],
+          members.map((m) => ({ id: m._id, name: m.name, role: m.role, phone: m.phone, urgentAlerts: m.urgentAlerts })),
+        );
     if (targets.length === 0) return;
 
     const config = phoneConfig(process.env);

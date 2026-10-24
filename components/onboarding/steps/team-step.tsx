@@ -7,12 +7,12 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { INVITABLE_ROLES, ROLES, type CareRole } from "@/lib/onboarding/roles";
 import {
-  ChoiceCard,
   ErrorNote,
   errorText,
   Field,
   PrimaryButton,
   SecondaryButton,
+  Select,
   StepActions,
   StepHeading,
   TextButton,
@@ -109,17 +109,15 @@ export function TeamStep({ userId, patientId, patientName, members, pendingInvit
 
       <div className="grid max-w-5xl gap-10 xl:grid-cols-[1fr_320px]">
         <form onSubmit={(e) => void submit(e)} className="space-y-6 rounded-3xl border border-plum/10 bg-white/45 p-6 backdrop-blur-sm">
-          <div role="radiogroup" aria-label="Role" className="grid gap-3 sm:grid-cols-2">
-            {INVITABLE_ROLES.map((r) => (
-              <ChoiceCard
-                key={r}
-                selected={role === r}
-                onSelect={() => setRole(r)}
-                title={r === "patient" ? `${patientName} themself` : ROLES[r].title}
-                body={ROLES[r].blurb}
-              />
-            ))}
-          </div>
+          <Field label="They are" htmlFor="inviteRole" hint={ROLES[role].blurb}>
+            <Select id="inviteRole" value={role} onChange={(e) => setRole(e.target.value as CareRole)}>
+              {INVITABLE_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r === "patient" ? `${patientName} themself` : ROLES[r].title}
+                </option>
+              ))}
+            </Select>
+          </Field>
           {role === "patient" && (
             <p className="text-sm text-plum-muted">
               Optional. The band works on its own; this gives {patientName} a simple app view and lets them manage who&apos;s on

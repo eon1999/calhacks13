@@ -104,6 +104,27 @@ describe("planTexts", () => {
     const plan = planTexts("notify", [member({ id: "a" }), member({ id: "b" })], [], now);
     expect(plan).toHaveLength(1);
   });
+
+  describe("with a test number (simulator debug mode)", () => {
+    const testTo = "+14155559999";
+    const team = [member({ id: "owner", isOwner: true }), member({ id: "aide", phone: "+14155550102" })];
+
+    it("sends one text to the test number instead of the care team", () => {
+      for (const tier of ["urgent", "notify", "ask"] as const) {
+        expect(planTexts(tier, team, [], now, "UTC", testTo)).toEqual([{ to: testTo }]);
+      }
+    });
+
+    it("isn't throttled, so every trigger texts", () => {
+      const recent = [{ to: testTo, at: now - 1000, status: "sent" as const }];
+      expect(planTexts("notify", team, recent, now, "UTC", testTo)).toEqual([{ to: testTo }]);
+    });
+
+    it("still sends nothing for info alerts, even with no one on the team", () => {
+      expect(planTexts("info", team, [], now, "UTC", testTo)).toEqual([]);
+      expect(planTexts("urgent", [], [], now, "UTC", testTo)).toEqual([{ to: testTo }]);
+    });
+  });
 });
 
 describe("notification preferences in the plan", () => {

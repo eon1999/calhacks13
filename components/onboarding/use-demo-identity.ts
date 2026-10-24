@@ -10,7 +10,7 @@ import { ClerkUserIdContext } from "@/components/auth/clerk-identity";
 // Convex resolves the caller from ctx.auth when signed in (convex/identity.ts),
 // so the id passed here only matters for signed-out demo use.
 
-const KEY = "cadence.demoUser";
+export const DEMO_USER_KEY = "cadence.demoUser";
 const listeners = new Set<() => void>();
 const memory: { local: string | null; tab: string | null } = { local: null, tab: null };
 
@@ -20,7 +20,7 @@ export interface DemoIdentity {
 
 function get(store: () => Storage): string | null {
   try {
-    return store().getItem(KEY);
+    return store().getItem(DEMO_USER_KEY);
   } catch {
     return null;
   }
@@ -28,7 +28,7 @@ function get(store: () => Storage): string | null {
 
 function set(store: () => Storage, value: string): void {
   try {
-    store().setItem(KEY, value);
+    store().setItem(DEMO_USER_KEY, value);
   } catch {
     // Private mode: the id lives for this page only.
   }

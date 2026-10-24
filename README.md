@@ -91,19 +91,36 @@ Every request carries `Authorization: Bearer <device token>`; register a device 
 | `POST /device/event` | `{ deviceId, type: "lid_open" \| "sos" \| "fall", peakG? }` | `{ ok, match? }` |
 | `POST /device/heartbeat` | `{ deviceId, firmwareVersion? }` | `{ led: "due" \| "taken" \| "missed" \| "off", buzz }` |
 
+`steps` and `activeMinutes` count one window only (reports add windows up per day), so the band resets them after each post. Leave out `heartRate` when the sensor has no clean reading. The server timestamps everything, so the band needs no clock.
+
 The voice endpoints the band calls are documented in `CHANGELOG.md` ("HTTP contract").
+
+### Fake band (no hardware needed)
+
+`scripts/fake-band.mts` stands in for the wristband. It posts realistic windows, heartbeats and events to the routes above with a real device token. Register a device on **/settings**, then:
+
+```bash
+export FAKE_BAND_ID=<device id> FAKE_BAND_TOKEN=<token>
+npm run fake-band -- --speed 30                    # 5-min windows every 10 s, heartbeat every 30 s
+npm run fake-band -- --scenario inactive           # zero-movement windows (also: normal, resting)
+npm run fake-band -- --speed 30 --fall-after 1m    # stream, then fall once
+npm run fake-band -- fall                          # one event and exit (also: sos, lid)
+```
+
+The URL comes from `NEXT_PUBLIC_CONVEX_SITE_URL` in `.env.local` (`FAKE_BAND_URL` overrides it). The generator is in `lib/fake-band.ts`. Stop the script and the device goes offline like a real band would.
 
 ## Tests
 
 ```bash
 npm test      # vitest: lib/**/*.test.ts and tests/convex (Convex functions against convex-test's in-memory backend)
 npm run lint
+npm run firmware:test   # band firmware logic (firmware/band/lib/cadence_core), built with g++ on this machine
 ```
 
 ## Known limitations
 
 - **Auth is opt-in.** Clerk is wired in but off until keys are set, and signed-out demo identities still work unless `CADENCE_REQUIRE_AUTH=1`. Dashboard, report, voice and /demo functions don't yet check care-team membership or permissions (marked `TODO(auth)`).
-- **No firmware yet.** `/demo` and the `/hub` simulator stand in for the band and pillbox; the device routes are ready for it.
+- **Band firmware is untested on hardware.** `firmware/band` (ESP32) has tested core logic and a `band-sim` build for a bare board, but hasn't been compiled for or run on a real band yet. The pillbox has no firmware. `/demo`, the `/hub` simulator and `npm run fake-band` stand in for both.
 - Alerts reach the care partner on `/care` (with a browser notification when the tab is open). No SMS or push yet.
 - Moss isn't wired up (no key); the agent's memory of earlier check-ins comes from Convex.
 - Not clinical-grade: thresholds are starting points, and reports are observations, not advice.

@@ -94,7 +94,14 @@ export const textAlert = internalAction({
     if (!found) return;
     const { alert, patient, members, recent } = found;
 
-    const plan = planTexts(alert.tier, members.map(textable), recent, Date.now(), patient.timeZone);
+    const plan = planTexts(
+      alert.tier,
+      members.map(textable),
+      recent,
+      Date.now(),
+      patient.timeZone,
+      patient.testTextTo,
+    );
     if (plan.length === 0) return;
 
     const name = patient.preferredName ?? patient.name;
@@ -104,7 +111,7 @@ export const textAlert = internalAction({
         const base = {
           patientId: patient._id,
           alertId,
-          memberId: p.memberId as Id<"careTeamMembers">,
+          memberId: p.memberId as Id<"careTeamMembers"> | undefined,
           to: p.to,
           body,
         };
@@ -162,6 +169,7 @@ export const overview = query({
 
     return {
       live: twilioConfig(process.env) !== null,
+      testTextTo: patient?.testTextTo ? maskPhone(patient.testTextTo) : null,
       patientName: patient ? (patient.preferredName ?? patient.name) : "them",
       urgentGap: hasUrgentGap(members.map(textable)),
       summaryRecipients: members.filter((m) => getsDailySummary(textable(m))).length,
