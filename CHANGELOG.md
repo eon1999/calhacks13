@@ -5,6 +5,22 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Cadence installs as a phone app (PWA)
+
+The band is getting less capable, so the phone takes over voice and display. `/hub` already does that job, so Cadence is now installable from the browser ("Add to Home Screen"). No Apple developer account or app store is needed, on iPhone or Android.
+- **Manifest** (`app/manifest.ts`, served at `/manifest.webmanifest`): name "Cadence", `standalone`, opens at `/hub?demo=1`, dusk-violet `#4a12a3` theme and background.
+- **Icons** (`public/icons/`): a white pulse line on a violet gradient. `icon.svg` is the source. `icon-192.png`, `icon-512.png` (also used as `maskable`, since it's full-bleed) and `apple-touch-icon.png` (180) were rendered from it with sharp. Re-render them if the SVG changes.
+- **iOS** (`app/layout.tsx`): `appleWebApp` (capable, title, `black` status bar) and the apple-touch icon, because iOS ignores the manifest's icons. `viewport.themeColor` matches the manifest.
+
+**Verified:** `next build` (tsc included), eslint on the touched files, 184 unit tests. On `next start` at 375px wide, the manifest is served as `application/manifest+json`, all head tags and icons load, `/hub?demo=1` renders with no horizontal scroll, and there are no console errors. Not yet tried on a real phone.
+
+**Open**
+- No service worker, so there's no offline page or web push. Chrome no longer needs one to offer install. iOS only allows web push for home-screen apps (16.4+), and that needs a service worker, VAPID keys and a subscriptions table. Until then, spoken prompts only play while the app is open, and texts and calls cover urgent alerts.
+- iPhone browsers have no Web Bluetooth. If the band ever has to relay through the phone over Bluetooth, use Android Chrome or go native.
+- The phone needs HTTPS (or localhost) for the mic and for installing. Use the deployed URL, or a tunnel to the dev server.
+
+---
+
 ## 2026-10-24: Band firmware (ESP32), written ahead of the hardware
 
 `firmware/band` is a PlatformIO project for the wristband: steps, heart rate, falls and SOS, posted to the device API. The LED and buzz follow the heartbeat reply. No voice on the band: the phone does that. See `firmware/band/README.md`.

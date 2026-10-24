@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
@@ -33,6 +33,13 @@ export const metadata: Metadata = {
   title: "Cadence — Be there, even when you can't be",
   description:
     "Look after a loved one recovering at home after surgery. A voice wristband keeps them on track with doses and check-ins, and tells your family when something needs attention.",
+  // iOS ignores the manifest's icons and name, so the home-screen app needs these too.
+  appleWebApp: { capable: true, title: "Cadence", statusBarStyle: "black" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#4a12a3",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
