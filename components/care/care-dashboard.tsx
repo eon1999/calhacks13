@@ -10,6 +10,7 @@ import { AlertList } from "./alert-list";
 import { ActivityToday, AdherenceByDay } from "./care-charts";
 import { DosesToday, Stat, Timeline } from "./day-panels";
 import { SummaryCard } from "./summary-card";
+import { useAlertNotifications } from "./use-alert-notifications";
 
 const ROLE_LABEL: Record<string, string> = {
   care_partner: "Family",
@@ -24,6 +25,7 @@ export function CareDashboard() {
   const patientId = patient?._id as Id<"patients"> | undefined;
   const data = useQuery(api.reports.care, patientId && now ? { patientId, now } : "skip");
   const alerts = useQuery(api.alerts.forCare, patientId ? { patientId } : "skip");
+  const notifications = useAlertNotifications(alerts?.open, patient?.firstName);
 
   return (
     <AppShell patients={patients} patient={patient} onSelectPatient={select}>
@@ -50,6 +52,16 @@ export function CareDashboard() {
                   : "Consent not asked yet"}
             </p>
           </header>
+
+          {notifications.permission === "default" && (
+            <button
+              type="button"
+              onClick={() => void notifications.enable()}
+              className="rounded-full border border-plum/20 bg-white px-4 py-2 text-sm font-medium hover:bg-lilac print:hidden"
+            >
+              Notify me on this device when something needs attention
+            </button>
+          )}
 
           <AlertList open={alerts.open} handled={alerts.handled} timeZone={data.patient.timeZone} />
 

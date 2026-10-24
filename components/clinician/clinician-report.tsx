@@ -2,6 +2,7 @@
 
 import { useAction, useQuery } from "convex/react";
 import { Download, LoaderCircle, Printer, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AppShell, NoPatient, Panel } from "@/components/app/app-shell";
 import { useSelectedPatient } from "@/components/app/use-patient";
@@ -50,6 +51,7 @@ const STATE_ROWS = [
 ] as const;
 
 export function ClinicianReport({ patientId }: { patientId: Id<"patients"> }) {
+  const router = useRouter();
   const { patients, patient, select } = useSelectedPatient();
   const [range, setRange] = useState<Range>(() => presetRange(14));
   const data = useQuery(api.reports.clinician, { patientId, from: range.from, to: range.to });
@@ -61,7 +63,7 @@ export function ClinicianReport({ patientId }: { patientId: Id<"patients"> }) {
       patient={current}
       onSelectPatient={(id) => {
         select(id);
-        window.location.assign(`/clinician/${id}`);
+        router.push(`/clinician/${id}`);
       }}
     >
       {data === undefined ? (
