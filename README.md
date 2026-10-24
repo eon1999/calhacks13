@@ -26,7 +26,9 @@ The Next.js voice routes read `ANTHROPIC_API_KEY` and `CARTESIA_API_KEY` from `.
 | `/` | Landing page |
 | `/start` | Family-led setup wizard (profile, recovery, health, medicines, band pairing, care team) |
 | `/hub` | Demo hub: spinnable 3D band, patient onboarding (conditions, medications, emergency contacts), watch-list research, and the voice simulator |
-| `/care`, `/clinician/[patientId]` | Care dashboard and clinician report (in progress) |
+| `/care` | Today for family and caregivers: medicines (mark taken), check-ins, open alerts |
+| `/settings` | My notifications: presets, quiet hours, daily summary time |
+| `/clinician/[patientId]` | Printable 7/14-day recovery report for the doctor |
 
 ## ⚠️ Heads-up after pulling (Oct 24)
 

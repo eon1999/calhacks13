@@ -5,6 +5,54 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Tier 1 care features (notification preferences, daily summary, /care, clinician report, scheduled check-ins)
+
+This branch started as `feat/voice-on-task` with `origin/main` merged in (hub patient onboarding, the 3D band, the watch-list research agent). The only conflicts were import lines in `wearable-simulator.tsx` and `convex/onboarding.ts`. The guiding rule throughout: **configurable without overwhelm**.
+
+**A. Notification preferences** (`lib/notify/preferences.ts` + tests)
+- Each member picks one of three presets: **Just the important stuff** (default and recommended: urgent, heads-ups, daily summary, quiet 10 PM–7 AM), **Everything**, or **Emergencies only**. Individual switches (urgent, heads-ups, "please check in" for the owner, daily summary + time, quiet hours + times) sit under a folded **Customize**.
+- Stored on `careTeamMembers.notifications` with every field optional, so old rows resolve to the default. The old `urgentAlerts` flag is the fallback for `urgent` until someone chooses, and it's kept in sync on save.
+- `planTexts()`/`recipientsFor()` (`lib/notify/plan.ts`) honour them. During a member's quiet hours (patient's time zone), non-urgent texts are logged `skipped`, either as "Quiet hours, saved for the daily summary" (`textMessages.heldForSummary`) or, if they don't get a summary, as "not texted". **Urgent always goes.**
+- Guardrails are warnings, never blocks: turning urgent off shows a warning in the editor, and the hub card warns when nobody with a phone would get an urgent text (`hasUrgentGap`).
+- Editing: `notify.setNotificationPreferences` uses the same rule as `setMemberPhone` (yourself, or anyone if you're the owner or patient). The UI lives in the hub's **Text alerts** card ("Notifications" under each person) and on **`/settings`** (`components/notify/my-notifications.tsx`), which is no longer a stub. `/settings` also lets you change your own number. Shared editor: `components/notify/preferences-editor.tsx`.
+
+**B. Daily recovery summary** (`lib/summary/daily.ts` + tests, `convex/summary.ts`, `convex/crons.ts`)
+- A rule-based composer (no LLM) builds one SMS under 300 characters: "Cadence · Margaret, day 5 after knee replacement: took 6/6 medicines, pain 5→3, last check-in: doing well, no warning signs." It adds a brief line for items held in quiet hours. Minor details (steps, then last state) are dropped first when it runs long.
+- A cron runs every 15 minutes. Each member with the summary on, the `summary` permission, and a phone gets it at their own time (20-minute window), at most once a day. Doctors and the patient are never texted. Each run is stored in `summaries` (`kind: "daily"`, `model: "rules"`). Texts go through `deliver()`, so dry run still applies, and are logged with `textMessages.summaryId`.
+- The hub card has **Send today's summary now**. It ignores time and the daily limit and shows the text.
+
+**C. `/care` "today" page** (`components/care/care-today.tsx`, `convex/care.ts`)
+- Shows the recovery day and phase, open alerts ("I've got it" acknowledges) and check-ins that need a look (red flag or `struggling`) at the top. Below that: today's medicines with **Mark taken** (`doseEvents.source: "manual"`; doctors can't, and nothing more than 3 h early), today's check-ins, care notes and steps. Styled lilac/plum.
+- Doctors are redirected to their report. `OnboardingShell` gained a `label` prop, and there's a small left-rail nav (`components/care/care-nav.tsx`).
+
+**D. Clinician report `/clinician/[patientId]`** (`components/care/clinician-report.tsx`, `convex/report.ts`, `lib/report/recovery.ts` + tests)
+- Read-only, last 7 days with a 14-day toggle. Shows adherence % (overall and per day; each current medicine counts from the discharge date, or the surgery date, and doses still due or later today don't count), a pain trend as an inline SVG with hover tooltips, the check-in table with states and red flags, falls/SOS, and a **Follow up** list. **Print** uses `@media print` (`app/globals.css`, plus `print:` classes on the shell).
+- Needs the `report` permission. Others get a polite "not available". `params` is awaited inside Suspense (Next 16 async params, `PageProps`).
+
+**E. Phase-based scheduled check-ins** (`lib/onboarding/recovery.ts` `checkInsForDay`, `lib/voice/events.ts` `scheduledCheckInTimes`/`dueScheduledCheckIn`, tests in `lib/voice/check-ins.test.ts`)
+- Cadence: first days 3×/day, early 2×/day, getting stronger 1×/day, routine every other day, pre-op none. Times are spread over 9 AM–9 PM, moved in 15-minute steps out of every dose's reminder window (seed schedule → 11:00, 15:15, 18:45). A slot is skipped if a check-in happened in it, or within the hour before it.
+- `POST /api/voice/nudge` without `event`: a due dose still wins. Otherwise a due scheduled check-in speaks `check_in` (recorded with trigger `scheduled`), keyed `check_in@<ms>` for dedupe. This is backward compatible; the contract above now notes it, and `X-Cadence-Event` is an extra header the simulator uses for its log label.
+
+**Demo seed** (`convex/seed.ts`): Sarah and Maria get fictional 555-01xx numbers (so texts show in the log), there's a doctor (Dr. Patel, `report` permission), discharge is day 1, and there are two days of seeded doses (one missed Apixaban) and check-ins (pain 7→4, one wound red flag). There's no real sign-in yet, so `/care`, `/settings`, the report and the hub card offer **Demo: view as Sarah / Maria / Dr. Patel** (`seed.demoMembers`, a tab-only override in `use-demo-identity.ts`). Existing deployments keep their old seed, since seeding is idempotent.
+
+**Verified**
+- `tsc` (app and `convex/`), `eslint` (only the 4 pre-existing generated-file warnings), **115 unit tests** (39 new: preferences, plan changes, summary composer, report math, check-in cadence) and `next build` all pass.
+- **The Convex functions ran end to end in memory** with `convex-test` (installed with `--no-save`, test not committed), in dry run. Steps: seed; presets and the permission check (Maria can't edit Sarah's); the urgent-gap warning; a red-flag check-in at 11:30 PM held for Sarah only, with the urgent fall alert sent to both; the next evening's cron summary with "Held in quiet hours: 1 heads-up (Check-in red flag: New calf pain and swelling)" and no second send in the same window; "send now"; `/care` data, manual dose (`source: manual`) and acknowledge; doctor redirect and refusal to mark doses; report as the doctor (adherence and pain series) and refused for Maria. It found one bug (the held line repeated the whole alert text), now fixed.
+- In a browser, `/care`, `/settings`, `/clinician/<id>` and `/hub` render with no client errors, and the preferences editor renders and toggles (urgent warning shown).
+
+**Not verified**
+- No live Convex backend in the cloud sandbox: the network policy blocks the local-backend download (`version.convex.dev`, GitHub releases), so `convex/_generated/api.d.ts` was edited by hand (new modules `care`, `crons`, `report`, `summary`). **Run `npx convex dev` once** to regenerate it and push the schema and cron.
+- Pages with real data in a browser, the actual cron firing on a deployment, live Twilio, and a scheduled check-in spoken by real Claude/Cartesia (no keys here).
+
+**Open**
+- Daily-summary eligibility for caregivers follows the `summary` permission, which caregivers don't have by default, and there's no UI to grant it yet.
+- Adherence uses the current active medicines; a medicine stopped mid-week drops out of past days.
+- Waking hours for check-ins are fixed at 9–9. A per-patient setting would fit the same Customize pattern.
+- No inbound "I've got it" by SMS yet. The optional `kind: "clinician"` summary row isn't written.
+- Same auth gap as before: `userId` is the demo identity, and the "view as" picker makes that explicit.
+
+---
+
 ## 2026-10-24: Voice agent stays on task
 
 The voice agent was drifting into small talk. `lib/voice/prompt.ts` now has a **Staying on task** section. Cadence is still warm, but every reply should serve recovery (meds, symptoms, pain, mobility, sleep, mood). It doesn't start small talk or ask questions just to keep the patient talking. When the patient goes off-topic, it acknowledges briefly and steers back. It declines trivia and general questions. Once the reason for the conversation is handled, it closes in one sentence. The persona line changed from "caring friend" to "caring nurse who has a few minutes".
