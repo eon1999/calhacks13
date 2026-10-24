@@ -1,7 +1,17 @@
+import type { Metadata } from "next";
+import { ConvexClientProvider } from "@/components/convex-client-provider";
+import { MyNotifications } from "@/components/notify/my-notifications";
+
+export const metadata: Metadata = {
+  title: "My notifications · Cadence",
+  robots: { index: false },
+};
+
+// Caregivers and family reach their notification settings here without the hub.
 export default function SettingsPage() {
   return (
-    <main className="p-8">
-      <h1 className="text-3xl font-bold">Settings</h1>
-    </main>
+    <ConvexClientProvider>
+      <MyNotifications />
+    </ConvexClientProvider>
   );
 }

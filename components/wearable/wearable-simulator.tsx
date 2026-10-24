@@ -124,7 +124,7 @@ export function WearableSimulator({ band, agent }: WearableSimulatorProps) {
 
         {pairingCard}
 
-        {band.pairing.state === "paired" && <TextAlertsCard patientId={band.pairing.patientId} />}
+        <TextAlertsCard patientId={agent.patient.id} />
 
         <DebugPanel agent={agent} busy={busy} />
       </div>

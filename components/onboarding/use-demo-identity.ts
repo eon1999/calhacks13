@@ -54,7 +54,12 @@ function newId(): string {
 }
 
 /** The current demo user, created on first use. `null` during SSR. */
-export function useDemoIdentity(): { identity: DemoIdentity | null; startFresh: () => void } {
+export function useDemoIdentity(): {
+  identity: DemoIdentity | null;
+  startFresh: () => void;
+  /** Demo only: act as a seeded team member in this tab, or `null` to go back to this browser's own identity. */
+  actAs: (userId: string | null) => void;
+} {
   const raw = useSyncExternalStore(subscribe, snapshot, () => null);
   useEffect(() => {
     if (snapshot()) return;
@@ -67,5 +72,15 @@ export function useDemoIdentity(): { identity: DemoIdentity | null; startFresh: 
     set(() => sessionStorage, memory.tab);
     notify();
   }, []);
-  return { identity: raw ? { id: raw } : null, startFresh };
+  const actAs = useCallback((userId: string | null) => {
+    memory.tab = userId;
+    try {
+      if (userId) sessionStorage.setItem(KEY, userId);
+      else sessionStorage.removeItem(KEY);
+    } catch {
+      // Private mode: memory.tab still applies to this page.
+    }
+    notify();
+  }, []);
+  return { identity: raw ? { id: raw } : null, startFresh, actAs };
 }

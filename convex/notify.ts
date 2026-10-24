@@ -11,7 +11,8 @@ import {
   type MutationCtx,
 } from "./_generated/server";
 import { maskPhone } from "../lib/notify/phone";
-import { alertTextBody, planTexts, type TextableMember } from "../lib/notify/plan";
+import { alertTextBody, getsDailySummary, hasUrgentGap, planTexts, preferencesOf, type TextableMember } from "../lib/notify/plan";
+import { presetOf, validatePreferences } from "../lib/notify/preferences";
 import { sendSms, twilioConfig } from "../lib/notify/twilio";
 import { formatLocalTime } from "../lib/schedule";
 import { membership, optionalPhone } from "./onboarding";
@@ -44,7 +45,7 @@ export async function openAlert(
   return alertId;
 }
 
-function textable(m: Doc<"careTeamMembers">): TextableMember {
+export function textable(m: Doc<"careTeamMembers">): TextableMember {
   return {
     id: m._id,
     name: m.name ?? "Care team member",
@@ -53,12 +54,15 @@ function textable(m: Doc<"careTeamMembers">): TextableMember {
     phone: m.phone,
     isOwner: m.isOwner,
     urgentAlerts: m.urgentAlerts,
+    preferences: m.notifications,
   };
 }
 
 const textRecord = v.object({
   patientId: v.id("patients"),
   alertId: v.optional(v.id("alerts")),
+  summaryId: v.optional(v.id("summaries")),
+  heldForSummary: v.optional(v.boolean()),
   memberId: v.optional(v.id("careTeamMembers")),
   to: v.string(),
   body: v.string(),
@@ -66,7 +70,7 @@ const textRecord = v.object({
   reason: v.optional(v.string()),
   providerId: v.optional(v.string()),
 });
-type TextRecord = Infer<typeof textRecord>;
+export type TextRecord = Infer<typeof textRecord>;
 
 export const alertTextContext = internalQuery({
   args: { alertId: v.id("alerts") },
@@ -95,7 +99,7 @@ export const recordTexts = internalMutation({
 });
 
 /** Send one text, or log it as a dry run when Twilio isn't configured. */
-async function deliver(base: Omit<TextRecord, "status" | "reason" | "providerId">): Promise<TextRecord> {
+export async function deliver(base: Omit<TextRecord, "status" | "reason" | "providerId">): Promise<TextRecord> {
   const config = twilioConfig(process.env);
   if (!config) return { ...base, status: "skipped", reason: DRY_RUN };
   const result = await sendSms(config, base.to, base.body);
@@ -115,7 +119,7 @@ export const textAlert = internalAction({
     if (!found) return;
     const { alert, patient, members, recent } = found;
 
-    const plan = planTexts(alert.tier, members.map(textable), recent, Date.now());
+    const plan = planTexts(alert.tier, members.map(textable), recent, Date.now(), patient.timeZone);
     if (plan.length === 0) return;
 
     const name = patient.preferredName ?? patient.name;
@@ -129,12 +133,33 @@ export const textAlert = internalAction({
           to: p.to,
           body,
         };
-        return p.skip ? Promise.resolve<TextRecord>({ ...base, status: "skipped", reason: p.skip }) : deliver(base);
+        return p.skip
+          ? Promise.resolve<TextRecord>({ ...base, status: "skipped", reason: p.skip, heldForSummary: p.held })
+          : deliver(base);
       }),
     );
     await ctx.runMutation(internal.notify.recordTexts, { texts });
   },
 });
+
+/** One member's notification settings, as the hub card and /settings show them. */
+function memberNotifications(m: Doc<"careTeamMembers">, canEdit: boolean, isMe: boolean) {
+  const preferences = preferencesOf(textable(m));
+  return {
+    memberId: m._id,
+    name: m.name ?? "Care team member",
+    relationship: m.relationship,
+    role: m.role,
+    isMe,
+    isOwner: m.isOwner ?? false,
+    canEdit,
+    phone: m.phone ? maskPhone(m.phone) : null,
+    preferences,
+    preset: presetOf(preferences),
+    // Caregivers don't get summaries by default (lib/onboarding/roles.ts).
+    hasSummaryPermission: m.permissions.includes("summary"),
+  };
+}
 
 /** The hub's "Text alerts" card: who gets texts for this patient, and what went out recently. */
 export const overview = query({
@@ -148,19 +173,11 @@ export const overview = query({
       .query("careTeamMembers")
       .withIndex("by_patient", (q) => q.eq("patientId", patientId))
       .collect();
+    const patient = await ctx.db.get(patientId);
     const names = new Map(members.map((m) => [m._id as string, m.name ?? "Care team member"]));
     const recipients = members
       .filter((m) => m.permissions.includes("alerts") && m.role !== "clinician" && m.role !== "patient")
-      .map((m) => ({
-        memberId: m._id,
-        name: m.name ?? "Care team member",
-        relationship: m.relationship,
-        role: m.role,
-        isMe: m._id === me._id,
-        canEdit: canManage || m._id === me._id,
-        phone: m.phone ? maskPhone(m.phone) : null,
-        urgentAlerts: m.urgentAlerts ?? false,
-      }));
+      .map((m) => memberNotifications(m, canManage || m._id === me._id, m._id === me._id));
 
     const recent = await ctx.db
       .query("textMessages")
@@ -170,6 +187,9 @@ export const overview = query({
 
     return {
       live: twilioConfig(process.env) !== null,
+      patientName: patient ? (patient.preferredName ?? patient.name) : "them",
+      urgentGap: hasUrgentGap(members.map(textable)),
+      summaryRecipients: members.filter((m) => getsDailySummary(textable(m))).length,
       recipients,
       recent: recent.map((t) => ({
         id: t._id,
@@ -179,7 +199,8 @@ export const overview = query({
         status: t.status,
         reason: t.reason,
         at: t.at,
-        test: !t.alertId,
+        kind: t.alertId ? ("alert" as const) : t.summaryId ? ("summary" as const) : ("test" as const),
+        held: t.heldForSummary ?? false,
       })),
     };
   },
@@ -228,5 +249,60 @@ export const sendTestText = action({
     });
     await ctx.runMutation(internal.notify.recordTexts, { texts: [text] });
     return { status: text.status, reason: text.reason };
+  },
+});
+
+const quietHoursInput = v.union(v.null(), v.object({ start: v.string(), end: v.string() }));
+export const preferencesInput = v.object({
+  urgent: v.boolean(),
+  headsUps: v.boolean(),
+  askAlerts: v.boolean(),
+  dailySummary: v.boolean(),
+  summaryTime: v.string(),
+  quietHours: quietHoursInput,
+});
+
+/**
+ * Save a member's notification preferences. Same rule as setMemberPhone: the
+ * owner or patient can change anyone's; everyone else only their own. Turning
+ * urgent alerts off is allowed (the UI warns); it's never blocked.
+ */
+export const setNotificationPreferences = mutation({
+  args: { userId: v.string(), memberId: v.id("careTeamMembers"), preferences: preferencesInput },
+  handler: async (ctx, { userId, memberId, preferences }) => {
+    const target = await ctx.db.get(memberId);
+    if (!target) throw new Error("That person isn't on the care team anymore");
+    const me = await membership(ctx, target.patientId, userId);
+    if (!me || !(me.isOwner || me.role === "patient" || me._id === target._id)) {
+      throw new Error("Only the person who set up Cadence, or the patient, can change someone else's notifications");
+    }
+    const clean = validatePreferences(preferences);
+    // Keep the legacy flag in step: the voice prompt reads it (convex/voice.ts).
+    await ctx.db.patch(memberId, { notifications: clean, urgentAlerts: clean.urgent });
+  },
+});
+
+/** /settings: the caller's own notification settings on every care team they're on. */
+export const myNotifications = query({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const mine = await ctx.db
+      .query("careTeamMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const rows = await Promise.all(
+      mine.map(async (m) => {
+        const patient = await ctx.db.get(m.patientId);
+        if (!patient) return null;
+        return {
+          patientId: patient._id,
+          patientName: patient.preferredName ?? patient.name,
+          timeZone: patient.timeZone,
+          texted: m.permissions.includes("alerts") && m.role !== "clinician" && m.role !== "patient",
+          ...memberNotifications(m, true, true),
+        };
+      }),
+    );
+    return rows.filter((r) => r !== null);
   },
 });

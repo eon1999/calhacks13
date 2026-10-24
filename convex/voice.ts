@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { resolvePreferences } from "../lib/notify/preferences";
 import { localDayBounds } from "../lib/schedule";
 import { openAlert } from "./notify";
 
@@ -65,7 +66,7 @@ export const getContext = query({
         name: m.name ?? "a care team member",
         role: m.role,
         relationship: m.relationship,
-        urgentAlerts: m.urgentAlerts ?? false,
+        urgentAlerts: resolvePreferences(m.notifications, m.urgentAlerts).urgent,
       }));
 
     return { patient, medications, doseEvents, lastCheckIn, checkInsToday, alertsToday, careTeam };

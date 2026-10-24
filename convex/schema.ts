@@ -8,6 +8,8 @@ const careRole = v.union(
   v.literal("patient"),
 );
 
+const quietHours = v.object({ start: v.string(), end: v.string() }); // "HH:mm", patient's time zone
+
 // All timestamps are UTC milliseconds.
 export default defineSchema({
   patients: defineTable({
@@ -68,6 +70,18 @@ export default defineSchema({
     isOwner: v.optional(v.boolean()),
     urgentAlerts: v.optional(v.boolean()),
     phone: v.optional(v.string()), // E.164; alerts are texted here (convex/notify.ts)
+    // What they want texts about. Unset fields fall back to the defaults in
+    // lib/notify/preferences.ts ("Just the important stuff").
+    notifications: v.optional(
+      v.object({
+        urgent: v.optional(v.boolean()),
+        headsUps: v.optional(v.boolean()),
+        askAlerts: v.optional(v.boolean()),
+        dailySummary: v.optional(v.boolean()),
+        summaryTime: v.optional(v.string()), // "HH:mm", patient's time zone
+        quietHours: v.optional(v.union(v.null(), quietHours)), // null = off
+      }),
+    ),
     joinedAt: v.optional(v.number()),
   })
     .index("by_patient", ["patientId"])
@@ -194,10 +208,12 @@ export default defineSchema({
     acknowledgedAt: v.optional(v.number()),
   }).index("by_patient_status", ["patientId", "status"]),
 
-  // Every text Cadence sent, tried, or deliberately held back for an alert.
+  // Every text Cadence sent, tried, or deliberately held back: alerts, daily summaries and tests.
   textMessages: defineTable({
     patientId: v.id("patients"),
-    alertId: v.optional(v.id("alerts")), // unset for "Send test"
+    alertId: v.optional(v.id("alerts")), // unset for summaries and "Send test"
+    summaryId: v.optional(v.id("summaries")), // set for daily summary texts
+    heldForSummary: v.optional(v.boolean()), // held for quiet hours; folded into the next summary
     memberId: v.optional(v.id("careTeamMembers")),
     to: v.string(), // E.164
     body: v.string(),

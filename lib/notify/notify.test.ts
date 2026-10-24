@@ -2,12 +2,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { maskPhone, toE164 } from "./phone";
 import {
   alertTextBody,
+  getsDailySummary,
+  hasUrgentGap,
   MAX_TEXT_LENGTH,
   NOTIFY_THROTTLE_MS,
   planTexts,
+  QUIET_HOURS_DROPPED,
+  QUIET_HOURS_HELD,
   recipientsFor,
   type TextableMember,
 } from "./plan";
+import { PRESETS } from "./preferences";
 import { sendSms, twilioConfig } from "./twilio";
 
 const member = (overrides: Partial<TextableMember>): TextableMember => ({
@@ -98,6 +103,69 @@ describe("planTexts", () => {
   it("texts a shared phone number once", () => {
     const plan = planTexts("notify", [member({ id: "a" }), member({ id: "b" })], [], now);
     expect(plan).toHaveLength(1);
+  });
+});
+
+describe("notification preferences in the plan", () => {
+  const TZ = "America/Los_Angeles";
+  const night = Date.parse("2026-10-24T23:30:00-07:00");
+  const day = Date.parse("2026-10-24T14:00:00-07:00");
+  const emergencies = { ...PRESETS.emergencies.values, summaryTime: "19:00" };
+  const everything = { ...PRESETS.everything.values, summaryTime: "19:00" };
+
+  it("holds heads-ups in quiet hours for the daily summary", () => {
+    expect(planTexts("notify", [member({})], [], night, TZ)).toEqual([
+      { memberId: "m1", to: "+14155550101", skip: QUIET_HOURS_HELD, held: true },
+    ]);
+    expect(planTexts("notify", [member({})], [], day, TZ)).toEqual([{ memberId: "m1", to: "+14155550101" }]);
+  });
+
+  it("always sends urgent, even in quiet hours", () => {
+    expect(planTexts("urgent", [member({})], [], night, TZ)).toEqual([{ memberId: "m1", to: "+14155550101" }]);
+  });
+
+  it("holds 'please check in' requests in quiet hours too", () => {
+    expect(planTexts("ask", [member({ isOwner: true })], [], night, TZ)[0].held).toBe(true);
+  });
+
+  it("says when a held text has no summary to go into", () => {
+    const aide = member({ id: "aide", role: "caregiver", permissions: ["alerts"] });
+    expect(planTexts("notify", [aide], [], night, TZ)).toEqual([
+      { memberId: "aide", to: "+14155550101", skip: QUIET_HOURS_DROPPED },
+    ]);
+  });
+
+  it("sends everything at night to members who chose Everything", () => {
+    expect(planTexts("notify", [member({ preferences: everything })], [], night, TZ)[0].skip).toBeUndefined();
+  });
+
+  it("leaves out members who switched a tier off", () => {
+    const team = [
+      member({ id: "sarah", isOwner: true, preferences: emergencies }),
+      member({ id: "maria", role: "caregiver", permissions: ["alerts"], phone: "+14155550102" }),
+    ];
+    expect(recipientsFor("notify", team).map((m) => m.id)).toEqual(["maria"]);
+    expect(recipientsFor("ask", team)).toEqual([]);
+    expect(recipientsFor("urgent", team).map((m) => m.id)).toEqual(["sarah", "maria"]);
+  });
+
+  it("lets a member's own choice override the legacy urgent flag", () => {
+    expect(recipientsFor("urgent", [member({ urgentAlerts: false, preferences: { urgent: true } })])).toHaveLength(1);
+    expect(recipientsFor("urgent", [member({ urgentAlerts: true, preferences: { urgent: false } })])).toHaveLength(0);
+  });
+
+  it("flags a team where nobody with a phone gets urgent texts", () => {
+    expect(hasUrgentGap([member({ preferences: { urgent: false } })])).toBe(true);
+    expect(hasUrgentGap([member({ phone: undefined })])).toBe(true);
+    expect(hasUrgentGap([member({}), member({ id: "x", preferences: { urgent: false } })])).toBe(false);
+  });
+
+  it("sends the daily summary only to family with the permission, a phone, and it on", () => {
+    expect(getsDailySummary(member({}))).toBe(true);
+    expect(getsDailySummary(member({ preferences: emergencies }))).toBe(false);
+    expect(getsDailySummary(member({ role: "caregiver", permissions: ["alerts"] }))).toBe(false);
+    expect(getsDailySummary(member({ role: "clinician", permissions: ["report", "summary"] }))).toBe(false);
+    expect(getsDailySummary(member({ phone: undefined }))).toBe(false);
   });
 });
 
