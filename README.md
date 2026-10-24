@@ -30,7 +30,7 @@ The Next.js voice routes read `ANTHROPIC_API_KEY` and `CARTESIA_API_KEY` from `.
 Clerk switches on when `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is set; without it everything runs on per-browser demo identities. To turn it on:
 
 1. Clerk Dashboard → **API keys**: copy the publishable and secret keys into `.env.local` (and Vercel) as `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`.
-2. Clerk Dashboard → **Integrations → Convex** (or a JWT template named `convex`), then `npx convex env set CLERK_JWT_ISSUER_DOMAIN <Frontend API URL>`.
+2. Clerk Dashboard → **Integrations → Convex** (or a JWT template named `convex`). Convex already trusts `https://perfect-ewe-2767.clerk.accounts.dev` (`convex/auth.config.ts`; override with `CLERK_JWT_ISSUER_DOMAIN`).
 3. Restart `npx convex dev` and `npm run dev`. Sign in / Sign up appear in the page headers.
 
 Signed in, Convex identifies you by your Clerk user id (`convex/identity.ts`), so you can't act as anyone else, and the patient picker shows only your care-team patients plus the demo patient. Signed-out demo use keeps working unless you set `npx convex env set CADENCE_REQUIRE_AUTH 1`.

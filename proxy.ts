@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import { clerkEnabled } from "./lib/clerk";
 
 // Clerk session handling (Next.js 16 calls middleware "proxy"). A no-op until
-// NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is set; no routes are forced behind sign-in
-// yet, so the demo pages stay open.
-export default clerkEnabled ? clerkMiddleware() : () => NextResponse.next();
+// both Clerk keys are set (without the secret key clerkMiddleware would fail
+// every request); no routes are forced behind sign-in yet, so the demo stays open.
+const serverKeys = clerkEnabled && Boolean(process.env.CLERK_SECRET_KEY);
+export default serverKeys ? clerkMiddleware() : () => NextResponse.next();
 
 export const config = {
   matcher: [
