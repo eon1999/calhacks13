@@ -13,7 +13,6 @@ export default defineSchema({
   patients: defineTable({
     name: v.string(),
     timeZone: v.string(),
-    tremorBaseline: v.optional(v.number()),
     // Onboarding profile (optional so the seeded demo patient stays valid).
     preferredName: v.optional(v.string()), // what the band calls them
     language: v.optional(v.string()),
@@ -110,14 +109,14 @@ export default defineSchema({
     ),
   }).index("by_patient_time", ["patientId", "scheduledFor"]),
 
-  tremorSamples: defineTable({
+  // Wristband movement per window; long quiet stretches prompt a gentle nudge to move.
+  activitySamples: defineTable({
     patientId: v.id("patients"),
     deviceId: v.string(),
     windowStart: v.number(),
-    tremorIndex: v.number(), // 0-100
-    bandRmsMg: v.number(),
-    peakHz: v.number(),
-    activity: v.union(v.literal("rest"), v.literal("active")),
+    steps: v.number(),
+    activeMinutes: v.number(),
+    heartRate: v.optional(v.number()),
   }).index("by_patient_time", ["patientId", "windowStart"]),
 
   events: defineTable({
@@ -140,17 +139,18 @@ export default defineSchema({
     at: v.number(),
     trigger: v.union(
       v.literal("scheduled"),
-      v.literal("tremor_spike"),
+      v.literal("low_activity"),
       v.literal("fall"),
       v.literal("manual"),
     ),
     transcript: v.string(),
     state: v.union(
-      v.literal("moving_well"),
-      v.literal("stiff_shaky"),
-      v.literal("extra_movement"),
+      v.literal("doing_well"),
+      v.literal("sore_but_managing"),
+      v.literal("struggling"),
       v.literal("unsure"),
     ),
+    painScore: v.optional(v.number()), // 0-10, when they gave one
     notes: v.optional(v.string()),
     redFlag: v.boolean(),
   }).index("by_patient_time", ["patientId", "at"]),

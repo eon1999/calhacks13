@@ -5,6 +5,25 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-23: Post-op pivot, finished
+
+Parkinson's-specific pieces are now post-op recovery ones throughout.
+
+**Changed**
+- **Check-in states** (`lib/schemas.ts`, `convex/schema.ts`, `convex/voice.ts`): `moving_well | stiff_shaky | extra_movement | unsure` → `doing_well | sore_but_managing | struggling | unsure`. Warning signs still go in `redFlag`.
+- **Pain score:** `checkIns.painScore` (0–10, optional). `record_check_in` takes a required, nullable `pain_score` (strict tool, `type: ["integer","null"]`; verified live). The prompt shows check-ins as "sore but managing, pain 6/10 (knee throbbing)". This also fixes a `replace("_")` that only replaced the first underscore.
+- **Tremor → activity:** the `tremor_spike` event is now `low_activity` ("Inactive for hours"). The band asks how they feel and suggests a short walk or ankle pumps only if their care plan allows. Check-in trigger `tremor_spike` → `low_activity`. Table `tremorSamples` → `activitySamples` (steps, activeMinutes, optional heartRate). `tremorPayload` → `activityPayload`. `/device/tremor` → `/device/activity` (still a 501 stub). `patients.tremorBaseline` removed.
+- **Safety prompt:** heavy bleeding is now urgent. Fever, a wound that is red or leaking, calf pain or swelling, and pain much worse than before are `notify`. The `red_flag` description lists the same signs.
+- **Demo seed** (`convex/seed.ts`): Margaret Lee, 3 days after a knee replacement (dates relative to today), on Acetaminophen, Apixaban and Cephalexin, with Sarah (daughter, owner) and Maria (caregiver) on the team.
+- **Debug phrases:** "My knee is really throbbing, maybe a 7 out of 10." and "The wound looks red and it feels warm."
+- **Landing:** hero kicker, loader line, story subtitles, feature wheel (pain and wound check-ins, recovery timeline, move-more nudges) and the "day with Cadence" ledger are rewritten for recovery after surgery. So are the page metadata.
+
+**Verified live:** `low_activity` nudge → "my knee is throbbing, about a 7, and the bandage looks a bit red" → check-in saved as `struggling`, `painScore: 7`, `redFlag: true`, `trigger: low_activity`, and the agent followed up on fever and calf pain. `tsc`, `eslint`, 73 unit tests and `next build` pass.
+
+**Deploy note:** Convex rejects the narrower schema if an existing deployment has check-ins with old states or `tremorSamples` rows. The dev deployment had none. Clear them before `npx convex deploy` if the cloud deployment does.
+
+---
+
 ## 2026-10-23: Onboarding (family-led), pivot to post-op recovery
 
 **Product pivot:** Cadence now supports people **recovering at home after surgery** instead of only people with Parkinson's. Onboarding captures the procedure and surgery date, and the voice agent's persona and check-ins follow the recovery phase. The check-in states (`moving_well`/`stiff_shaky`/…), tremor tables and landing copy still say Parkinson's; that's the next pivot step.

@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import {
   Activity,
   Bug,
+  Footprints,
   HeartPulse,
   Megaphone,
   Pill,
@@ -13,7 +14,6 @@ import {
   Trash2,
   TriangleAlert,
   Volume2,
-  Waves,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ const EVENT_BUTTONS: { event: WearableEvent; icon: ReactNode; danger?: boolean }
   { event: "dose_due", icon: <Pill /> },
   { event: "missed_dose", icon: <PillBottle /> },
   { event: "check_in", icon: <HeartPulse /> },
-  { event: "tremor_spike", icon: <Waves /> },
+  { event: "low_activity", icon: <Footprints /> },
   { event: "fall", icon: <TriangleAlert />, danger: true },
   { event: "sos", icon: <Siren />, danger: true },
 ];
@@ -43,7 +43,8 @@ const QUICK_PHRASES = [
   "I just took my pills.",
   "What's my next medication?",
   "Did I take my noon dose?",
-  "I'm feeling really stiff and shaky today.",
+  "My knee is really throbbing, maybe a 7 out of 10.",
+  "The wound looks red and it feels warm.",
   "I'm doing great, thanks!",
   "I fell and I can't get up.",
 ];

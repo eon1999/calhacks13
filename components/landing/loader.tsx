@@ -68,7 +68,7 @@ export function Loader({ onDone }: { onDone: () => void }) {
     <div ref={root} className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-lilac text-plum">
       <Wordmark animated className="text-[clamp(2.5rem,6vw,4rem)]" />
       <p data-intro className="mono-label mt-5 max-w-[30ch] text-center opacity-0">
-        A voice companion for people living with Parkinson&apos;s
+        A voice companion for recovering at home after surgery
       </p>
 
       <div data-intro className="absolute inset-x-5 bottom-6 opacity-0 md:inset-x-10">

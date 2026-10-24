@@ -17,7 +17,7 @@ export interface StoryBeat {
 
 export const HERO = {
   shape: "ecg" as ShapeName,
-  kicker: "A voice wristband for people living with Parkinson's",
+  kicker: "A voice wristband for recovering at home after surgery",
   lines: [
     { em: "Care", text: "that" },
     { text: "keeps time" },
@@ -31,41 +31,42 @@ export const STORY: StoryBeat[] = [
     shape: "capsule",
     tag: "Reminds",
     lines: [{ em: "It", text: "reminds you" }, { text: "before it's" }, { text: "too late" }],
-    sub: "Every dose, on time and out loud. Gentle, never nagging, and it knows a missed dose from a late one.",
+    sub: "Pain relief, antibiotics, blood thinners: every dose on time and out loud. Gentle, never nagging, and it knows a missed dose from a late one.",
   },
   {
     id: "listens",
     shape: "wave",
     tag: "Listens",
     lines: [{ text: "Listens" }, { em: "in", text: "plain words" }],
-    sub: "Tap the band and talk. It checks in on how you're moving, sleeping and feeling, and remembers so you don't have to.",
+    sub: "Tap the band and talk. It asks about pain, the wound, sleep and getting around, and remembers so you don't have to.",
   },
   {
     id: "cares",
     shape: "heart",
     tag: "Cares",
     lines: [{ text: "Speaks up", emAfter: "when" }, { text: "it matters" }],
-    sub: "Falls, missed doses and red flags reach your care team in seconds, with the context they need to help.",
+    sub: "Falls, fevers, a wound that looks wrong, missed doses: red flags reach your care team in seconds, with the context they need to help.",
   },
   {
     id: "people",
     shape: "sphere",
     tag: "Our people",
     lines: [{ em: "We" }, { text: "build for" }, { text: "steady days," }, { text: "not perfect ones" }],
-    sub: "Designed with the people who live it, the people who care for them, and the clinicians who treat them.",
+    sub: "Designed with people home from surgery, the families and aides who help them, and the clinicians who follow their recovery.",
   },
 ];
 
 export const FEATURES = [
   "Spoken dose reminders",
   "Tap-to-talk check-ins",
-  "On / off symptom tracking",
+  "Pain and wound check-ins",
   "Fall follow-up",
   "Care-team alerts",
-  "Clinician timeline",
+  "Recovery timeline",
   "Adherence reports",
   "Caregiver companion",
-  "Daily rhythm summaries",
+  "Move-more nudges",
+  "Daily recovery summaries",
 ];
 
 export interface Surface {
@@ -94,22 +95,22 @@ export const DAY: { part: string; moments: DayMoment[] }[] = [
     part: "Morning",
     moments: [
       { time: "07:30", label: "Good-morning check-in", kind: "Voice" },
-      { time: "08:00", label: "Levodopa reminder, spoken", kind: "Dose" },
+      { time: "08:00", label: "Pain relief and blood thinner, spoken", kind: "Dose" },
       { time: "08:04", label: "“Taken” — logged by voice", kind: "Log" },
     ],
   },
   {
     part: "Afternoon",
     moments: [
-      { time: "12:00", label: "Second dose, with lunch", kind: "Dose" },
-      { time: "15:20", label: "Stiffness noted as an “off” period", kind: "Symptom" },
+      { time: "13:10", label: "Quiet for three hours: a nudge to take a short walk", kind: "Movement" },
+      { time: "14:00", label: "Pain 4/10, wound looks fine", kind: "Check-in" },
     ],
   },
   {
     part: "Evening",
     moments: [
-      { time: "18:45", label: "Fall detected — follow-up and alert", kind: "Care team" },
-      { time: "21:30", label: "Day summary sent to your clinician", kind: "Report" },
+      { time: "18:45", label: "“Feeling hot and shivery”: fever flagged to the family", kind: "Care team" },
+      { time: "21:30", label: "Day 3 summary ready for the surgical team", kind: "Report" },
     ],
   },
 ];

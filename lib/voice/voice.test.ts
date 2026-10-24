@@ -19,8 +19,8 @@ import type { PatientContext } from "./context";
 const slot = (overrides: Partial<DoseSlot>): DoseSlot => ({
   slotId: "m1@1",
   medicationId: "m1",
-  name: "Carbidopa/Levodopa",
-  doseLabel: "25/100 mg",
+  name: "Acetaminophen",
+  doseLabel: "1000 mg",
   time: "08:00",
   scheduledFor: 1,
   status: "due",
@@ -38,13 +38,13 @@ describe("events", () => {
   });
 
   it("describeEvent names the due medication", () => {
-    expect(describeEvent("dose_due", [slot({})])).toContain("Carbidopa/Levodopa (25/100 mg) at 08:00");
+    expect(describeEvent("dose_due", [slot({})])).toContain("Acetaminophen (1000 mg) at 08:00");
     expect(describeEvent("fall", [])).toContain("fall");
   });
 
   it("maps events to check-in triggers", () => {
     expect(checkInTriggerFor("fall")).toBe("fall");
-    expect(checkInTriggerFor("tremor_spike")).toBe("tremor_spike");
+    expect(checkInTriggerFor("low_activity")).toBe("low_activity");
     expect(checkInTriggerFor("check_in")).toBe("scheduled");
     expect(checkInTriggerFor(null)).toBe("manual");
   });
@@ -60,6 +60,12 @@ describe("events", () => {
     expect(describeEvent("missed_dose", [])).toContain("no doses are missed");
     expect(describeEvent("sos", [])).toContain("urgent");
     expect(describeEvent("dose_due", [])).toContain("already taken");
+  });
+
+  it("nudges gentle movement when the band sees hours of inactivity, within their care plan", () => {
+    const text = describeEvent("low_activity", []);
+    expect(text).toContain("barely moved");
+    expect(text).toContain("care plan");
   });
 });
 
@@ -120,7 +126,7 @@ describe("conversationEvent", () => {
         { role: "event", text: "", event: "dose_due" },
         { role: "assistant", text: "" },
         { role: "event", text: "", event: "check_in" },
-        { role: "user", text: "stiff today" },
+        { role: "user", text: "sore today" },
       ]),
     ).toBe("check_in");
   });
@@ -178,12 +184,14 @@ describe("prompt", () => {
   it("lists today's alerts and check-ins so the agent doesn't repeat them", () => {
     const busy = {
       ...ctx,
-      checkInsToday: [{ at: Date.UTC(2026, 9, 23, 9, 0), state: "stiff_shaky", notes: "slow morning" }],
-      alertsToday: [{ createdAt: Date.UTC(2026, 9, 23, 9, 1), tier: "notify", reason: "Stiff since lunch" }],
+      checkInsToday: [
+        { at: Date.UTC(2026, 9, 23, 9, 0), state: "sore_but_managing", painScore: 6, notes: "knee throbbing" },
+      ],
+      alertsToday: [{ createdAt: Date.UTC(2026, 9, 23, 9, 1), tier: "notify", reason: "Wound looks red" }],
     } as unknown as PatientContext;
     const prompt = buildSystemPrompt(busy, Date.UTC(2026, 9, 23, 10, 0));
-    expect(prompt).toContain("check-in saved: stiff shaky (slow morning)");
-    expect(prompt).toContain("care team alerted (notify): Stiff since lunch");
+    expect(prompt).toContain("check-in saved: sore but managing, pain 6/10 (knee throbbing)");
+    expect(prompt).toContain("care team alerted (notify): Wound looks red");
   });
 
   it("toSpeakable strips markdown and collapses whitespace", () => {

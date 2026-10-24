@@ -111,15 +111,15 @@ export const confirmDose = mutation({
 });
 
 const checkInState = v.union(
-  v.literal("moving_well"),
-  v.literal("stiff_shaky"),
-  v.literal("extra_movement"),
+  v.literal("doing_well"),
+  v.literal("sore_but_managing"),
+  v.literal("struggling"),
   v.literal("unsure"),
 );
 
 const checkInTrigger = v.union(
   v.literal("scheduled"),
-  v.literal("tremor_spike"),
+  v.literal("low_activity"),
   v.literal("fall"),
   v.literal("manual"),
 );
@@ -130,6 +130,7 @@ export const recordCheckIn = mutation({
     trigger: checkInTrigger,
     transcript: v.string(),
     state: checkInState,
+    painScore: v.optional(v.number()),
     notes: v.optional(v.string()),
     redFlag: v.boolean(),
   },

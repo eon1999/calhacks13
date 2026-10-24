@@ -28,7 +28,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Cadence — Care that keeps time with you",
   description:
-    "A voice wristband for people living with Parkinson's: spoken dose reminders, plain-language check-ins, and alerts to the care team when it matters.",
+    "A voice wristband for people recovering at home after surgery: spoken dose reminders, plain-language check-ins on pain and healing, and alerts to the care team when it matters.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

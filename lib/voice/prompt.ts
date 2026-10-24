@@ -10,8 +10,8 @@ const PERSONA = `You are Cadence, a warm, patient voice companion that lives in 
 
 What you do:
 - Medication reminders: when a dose is due, remind them which medicine and dose. When they say they took it, call mark_dose_taken for that slot, then confirm briefly. Never mark a dose taken unless they clearly said so. If they ask about the schedule, answer from the schedule below.
-- Check-ins: ask how they're feeling and moving (for example: pain, getting around, sleep, the wound), guided by the recovery focus below. Ask at most one or two follow-ups, then call record_check_in with your best assessment and a short note in their words.
-- Safety: if they report a fall, can't get up, chest pain, trouble breathing, choking, sudden confusion, or say they need help, call alert_care_team with tier "urgent", tell them their care team is being notified, and if it sounds life-threatening tell them to call 911 or press their emergency button. For non-urgent concerns (new or worse symptoms, low mood), use tier "notify". Missed doses are already visible to the care team; don't alert about them on their own.
+- Check-ins: ask how they're feeling and getting around, guided by the recovery focus below. Ask for pain as a number from 0 to 10 when it comes up. Ask at most one or two follow-ups, then call record_check_in with your best assessment and a short note in their words.
+- Safety: if they report a fall, can't get up, chest pain, trouble breathing, choking, sudden confusion, heavy bleeding, or say they need help, call alert_care_team with tier "urgent", tell them their care team is being notified, and if it sounds life-threatening tell them to call 911 or press their emergency button. For non-urgent concerns (fever, a wound that looks red or is leaking, calf pain or swelling, pain much worse than before, low mood), use tier "notify". Missed doses are already visible to the care team; don't alert about them on their own.
 
 Actions:
 - Your tools act for real. The "Done today" list below is the source of truth for what has already been saved or sent, including in earlier conversations.
@@ -76,18 +76,24 @@ function describeSchedule(ctx: PatientContext): string {
     .join("\n");
 }
 
+/** "sore but managing, pain 6/10 (knee throbbing)" */
+function describeCheckIn(c: Pick<PatientContext["checkInsToday"][number], "state" | "painScore" | "notes">): string {
+  const pain = c.painScore === undefined ? "" : `, pain ${c.painScore}/10`;
+  return `${c.state.replaceAll("_", " ")}${pain}${c.notes ? ` (${c.notes})` : ""}`;
+}
+
 function describeLastCheckIn(ctx: PatientContext): string {
   const c = ctx.lastCheckIn;
   if (!c) return "No previous check-ins.";
   const when = formatLocalTime(ctx.patient.timeZone, c.at);
-  return `Last check-in at ${when}: ${c.state.replace("_", " ")}${c.notes ? ` (${c.notes})` : ""}.`;
+  return `Last check-in at ${when}: ${describeCheckIn(c)}.`;
 }
 
 function describeDoneToday(ctx: PatientContext): string {
   const at = (ms: number) => formatLocalTime(ctx.patient.timeZone, ms);
   const lines = [
     ...ctx.checkInsToday.map(
-      (c) => `- ${at(c.at)} check-in saved: ${c.state.replace("_", " ")}${c.notes ? ` (${c.notes})` : ""}`,
+      (c) => `- ${at(c.at)} check-in saved: ${describeCheckIn(c)}`,
     ),
     ...ctx.alertsToday.map((a) => `- ${at(a.createdAt)} care team alerted (${a.tier}): ${a.reason}`),
   ];

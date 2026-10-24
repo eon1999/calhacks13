@@ -25,7 +25,7 @@ export const voiceTools: Anthropic.Beta.BetaTool[] = [
   {
     name: "record_check_in",
     description:
-      "Save the result of a how-are-you check-in once you have enough to assess how the patient is moving and feeling.",
+      "Save the result of a how-are-you check-in once you have enough to assess how their recovery is going.",
     strict: true,
     input_schema: {
       type: "object",
@@ -34,15 +34,20 @@ export const voiceTools: Anthropic.Beta.BetaTool[] = [
           type: "string",
           enum: checkInState.options,
           description:
-            "moving_well; stiff_shaky (stiffness, tremor, slowness, 'off' time); extra_movement (dyskinesia, involuntary movements); unsure",
+            "doing_well (comfortable, getting around, eating and sleeping okay); sore_but_managing (pain or stiffness the current plan keeps under control); struggling (pain not controlled, very tired, not eating or sleeping, low mood); unsure",
+        },
+        pain_score: {
+          type: ["integer", "null"],
+          description: "Pain from 0 (none) to 10 (worst) if they gave a number or a clear description; null if not discussed.",
         },
         notes: { type: "string", description: "One short sentence, in the patient's words where possible." },
         red_flag: {
           type: "boolean",
-          description: "True for a fall, new or much worse symptoms, or anything the care team should see soon.",
+          description:
+            "True for a fall, fever or chills, a wound that is red, hot, swollen or leaking, calf pain or swelling, shortness of breath, pain much worse than before, or anything else the care team should see soon.",
         },
       },
-      required: ["state", "notes", "red_flag"],
+      required: ["state", "pain_score", "notes", "red_flag"],
       additionalProperties: false,
     },
   },
@@ -81,6 +86,7 @@ export const voiceTools: Anthropic.Beta.BetaTool[] = [
 const markDoseTakenInput = z.object({ slot_id: z.string() });
 const recordCheckInInput = z.object({
   state: checkInState,
+  pain_score: z.number().int().min(0).max(10).nullable(),
   notes: z.string().max(500),
   red_flag: z.boolean(),
 });
@@ -119,12 +125,13 @@ async function markDoseTaken(input: unknown, ctx: ToolContext): Promise<ToolOutc
 }
 
 async function recordCheckIn(input: unknown, ctx: ToolContext): Promise<ToolOutcome> {
-  const { state, notes, red_flag } = recordCheckInInput.parse(input);
+  const { state, pain_score, notes, red_flag } = recordCheckInInput.parse(input);
   await convex().mutation(api.voice.recordCheckIn, {
     patientId: ctx.patientId,
     trigger: ctx.checkInTrigger,
     transcript: ctx.transcript(),
     state,
+    painScore: pain_score ?? undefined,
     notes,
     redFlag: red_flag,
   });

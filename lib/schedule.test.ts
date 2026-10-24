@@ -52,8 +52,8 @@ describe("slot ids", () => {
 describe("buildDaySchedule", () => {
   const med = {
     id: "med1",
-    name: "Carbidopa/Levodopa",
-    doseLabel: "25/100 mg",
+    name: "Acetaminophen",
+    doseLabel: "1000 mg",
     times: ["12:00", "08:00", "10:15"],
     windowMinutes: 30,
   };

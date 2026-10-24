@@ -6,7 +6,7 @@ export const wearableEvent = z.enum([
   "dose_due",
   "missed_dose",
   "check_in",
-  "tremor_spike",
+  "low_activity",
   "fall",
   "sos",
   "first_boot",
@@ -17,7 +17,7 @@ export const EVENT_LABELS: Record<WearableEvent, string> = {
   dose_due: "Medication due",
   missed_dose: "Missed dose follow-up",
   check_in: "Scheduled check-in",
-  tremor_spike: "Tremor spike detected",
+  low_activity: "Inactive for hours",
   fall: "Possible fall detected",
   sos: "SOS button pressed",
   first_boot: "First time on the wrist",
@@ -31,11 +31,11 @@ export function isSafetyEvent(event: WearableEvent): event is SafetyEvent {
   return (SAFETY_EVENTS as readonly WearableEvent[]).includes(event);
 }
 
-export type CheckInTrigger = "scheduled" | "tremor_spike" | "fall" | "manual";
+export type CheckInTrigger = "scheduled" | "low_activity" | "fall" | "manual";
 
 export function checkInTriggerFor(event: WearableEvent | null): CheckInTrigger {
   if (event === "fall") return "fall";
-  if (event === "tremor_spike") return "tremor_spike";
+  if (event === "low_activity") return "low_activity";
   if (event === "check_in") return "scheduled";
   return "manual";
 }
@@ -80,8 +80,8 @@ export function describeEvent(event: WearableEvent, slots: DoseSlot[]): string {
         : "[Wearable event] Missed-dose check, but no doses are missed today. Briefly reassure the patient they're on track.";
     case "check_in":
       return "[Wearable event] Scheduled check-in. Ask the patient how they're feeling and moving right now.";
-    case "tremor_spike":
-      return "[Wearable event] The wristband measured a tremor much stronger than the patient's usual. Calmly ask how they're feeling and whether they're more shaky or stiff than usual, then record a check-in.";
+    case "low_activity":
+      return "[Wearable event] The wristband says they've barely moved in several hours. Ask kindly how they're feeling, and if their care plan allows, encourage a short walk or some ankle pumps to help circulation. Don't push if they're in pain or were told to rest. Then record a check-in.";
     case "fall":
       return "[Wearable event] Possible fall detected by the wristband. Ask right away if they are OK and whether they need help.";
     case "sos":
