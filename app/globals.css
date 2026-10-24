@@ -223,3 +223,27 @@
     display: none !important;
   }
 }
+
+/* Clinician report (/clinician/[patientId]): plain, ink-friendly pages. */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+  .print-report {
+    font-size: 11pt;
+  }
+  .print-report .display {
+    font-size: 28pt;
+  }
+  .print-report section {
+    break-inside: avoid;
+  }
+  .glass-pill {
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+}

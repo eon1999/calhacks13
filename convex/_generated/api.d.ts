@@ -18,6 +18,7 @@ import type * as notify from "../notify.js";
 import type * as onboarding from "../onboarding.js";
 import type * as pairing from "../pairing.js";
 import type * as profile from "../profile.js";
+import type * as report from "../report.js";
 import type * as seed from "../seed.js";
 import type * as summary from "../summary.js";
 import type * as voice from "../voice.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   onboarding: typeof onboarding;
   pairing: typeof pairing;
   profile: typeof profile;
+  report: typeof report;
   seed: typeof seed;
   summary: typeof summary;
   voice: typeof voice;

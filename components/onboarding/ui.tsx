@@ -17,9 +17,9 @@ export function OnboardingShell({
   label?: string;
 }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-lilac text-plum">
+    <div className="relative min-h-screen overflow-hidden bg-lilac text-plum print:min-h-0 print:overflow-visible print:bg-white">
       {/* soft dusk clouds, echoing the landing sky */}
-      <div aria-hidden className="pointer-events-none absolute inset-0">
+      <div aria-hidden className="pointer-events-none absolute inset-0 print:hidden">
         <div className="absolute -left-[10%] -top-[10%] h-[50vh] w-[55vw] rounded-full bg-[#e3c9fb]/70 blur-[90px]" />
         <div className="absolute -right-[8%] top-[30%] h-[45vh] w-[40vw] rounded-full bg-[#f6d3f3]/60 blur-[90px]" />
         <div className="absolute bottom-[-20%] left-[25%] h-[40vh] w-[50vw] rounded-full bg-[#c9b0f5]/40 blur-[100px]" />
@@ -32,8 +32,8 @@ export function OnboardingShell({
         <span className="mono-label text-plum-muted">{label}</span>
       </header>
 
-      <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-24 md:grid-cols-[220px_1fr] md:px-10 md:pt-6">
-        {aside ? <aside>{aside}</aside> : <div />}
+      <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-24 md:grid-cols-[220px_1fr] md:px-10 md:pt-6 print:block print:max-w-none print:p-0">
+        {aside ? <aside className="print:hidden">{aside}</aside> : <div className="print:hidden" />}
         <main>{children}</main>
       </div>
     </div>
