@@ -5,6 +5,49 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-23: Text alerts (SMS via Twilio)
+
+Every alert Cadence raises now **texts the care team**. That covers the agent's `alert_care_team`, red-flag check-ins, and a declined first-boot consent.
+
+**How it works**
+- `convex/notify.ts` `openAlert()` is now the only way to create an alert. It inserts the row and schedules the `textAlert` internal action, which sends through Twilio's REST API (`lib/notify/twilio.ts`, plain fetch with no SDK) and logs every attempt to the new `textMessages` table (`sent`/`failed`/`skipped`).
+- **Dry run by default.** Without Twilio env vars on the Convex deployment, texts are logged as `skipped` with the body that would have gone out. The hub card shows "Dry run".
+- **Who gets texted** (`lib/notify/plan.ts`, unit-tested):
+  - `urgent`: everyone with alerts who has `urgentAlerts` on.
+  - `notify`: everyone with alerts.
+  - `ask`: the owner only.
+  - Doctors and the patient are never texted.
+  - One text per phone number. Heads-ups go to the same phone at most once per 10 minutes; urgent alerts always go.
+- Message: `Cadence · URGENT for Margaret (3:42 PM): <reason> Reply STOP to opt out.`, capped at 300 chars (two SMS segments).
+
+**Where numbers come from** (`careTeamMembers.phone`, E.164 via `lib/notify/phone.ts`)
+- Setup's "You" step has an optional **Your mobile** field.
+- An invite's "Email or phone" becomes the member's alert number when they accept, if it's a phone.
+- On `/hub`, once the band is paired, a **Text alerts** card lists recipients with masked numbers. It has Add/Change number and **Send test** buttons, plus the recent send log. The owner or patient can edit anyone's number; others can edit only their own.
+
+**Turning it on**
+```
+npx convex env set TWILIO_ACCOUNT_SID AC...
+npx convex env set TWILIO_AUTH_TOKEN ...
+npx convex env set TWILIO_FROM +1...   # your Twilio number, or a Messaging Service SID (MG...)
+```
+Use `--prod` as well for the cloud deployment.
+
+**Twilio trial accounts can't send custom text.** Twilio rejects it with error 572006. A trial can send only Twilio's predefined templates (`sms_internal_alerts`, `sms_account_alerts`, …), passed as the body, and only to numbers verified in the console. Set `TWILIO_TRIAL_TEMPLATE=sms_internal_alerts` and that template goes out in place of Cadence's message. The real message is still logged, with a note in the hub's send log. Remove the variable after upgrading. Production US texting also needs A2P 10DLC or toll-free verification.
+
+**Verified:** `tsc`, `eslint`, 73 unit tests (18 new in `lib/notify/notify.test.ts`). Dry-run end to end on the local Convex deployment: setup with a phone, then urgent + notify alerts, then three `skipped` texts logged to Sarah with the right bodies. Non-members get `null` from `notify.overview` and are refused by `setMemberPhone`. This left a test patient, "SMS Test Patient" (owner `sms-e2e`), in the local deployment.
+
+**Verified live (trial):** a test text and an urgent alert both went out through the `sms_internal_alerts` template and arrived on a real phone.
+
+**Not verified:** custom text on an upgraded account, and the hub card in a browser. There's no delivery status callback yet, so the log records Twilio's "accepted", not "delivered".
+
+**Open**
+- No calling yet; texting only. A voice call could reuse `planTexts` for routing and Cartesia for the voice.
+- No "I've got it" reply handling. Twilio inbound webhooks could acknowledge the alert (`alerts.status`).
+- Same auth gap as the rest of the app: `userId` is the demo identity.
+
+---
+
 ## 2026-10-23: Post-op pivot, finished
 
 Parkinson's-specific pieces are now post-op recovery ones throughout.

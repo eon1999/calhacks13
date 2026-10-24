@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { localDayBounds } from "../lib/schedule";
+import { openAlert } from "./notify";
 
 // Functions backing the voice agent (lib/voice/*). Called from Next.js route
 // handlers via ConvexHttpClient.
@@ -138,12 +139,10 @@ export const recordCheckIn = mutation({
     const at = Date.now();
     const checkInId = await ctx.db.insert("checkIns", { ...args, at });
     if (args.redFlag) {
-      await ctx.db.insert("alerts", {
+      await openAlert(ctx, {
         patientId: args.patientId,
         tier: "notify",
         reason: `Check-in red flag: ${args.notes ?? args.state}`,
-        createdAt: at,
-        status: "open",
       });
     }
     return checkInId;
@@ -156,14 +155,7 @@ export const createAlert = mutation({
     tier: v.union(v.literal("ask"), v.literal("notify"), v.literal("urgent")),
     reason: v.string(),
   },
-  handler: async (ctx, { patientId, tier, reason }) =>
-    ctx.db.insert("alerts", {
-      patientId,
-      tier,
-      reason,
-      createdAt: Date.now(),
-      status: "open",
-    }),
+  handler: async (ctx, { patientId, tier, reason }) => openAlert(ctx, { patientId, tier, reason }),
 });
 
 /** The patient's spoken answer to the band's first-boot consent question. */
@@ -180,12 +172,10 @@ export const recordConsent = mutation({
     });
     if (!agreed) {
       // A "no" doesn't switch anything off; it asks the family to talk it through.
-      await ctx.db.insert("alerts", {
+      await openAlert(ctx, {
         patientId,
         tier: "ask",
         reason: `Didn't agree to sharing updates with the care team yet${notes ? `: ${notes}` : ""}. Worth a conversation.`,
-        createdAt: at,
-        status: "open",
       });
     }
   },

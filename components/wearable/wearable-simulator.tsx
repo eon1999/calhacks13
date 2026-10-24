@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { SlotStatus } from "@/lib/schedule";
 import { DebugPanel } from "./debug-panel";
 import { PairingCard } from "./pairing-card";
+import { TextAlertsCard } from "./text-alerts-card";
 import { useBandPairing } from "./use-band-pairing";
 import { useRecorder } from "./use-recorder";
 import { useVoiceAgent, type AgentStatus } from "./use-voice-agent";
@@ -119,6 +120,8 @@ export function WearableSimulator() {
         </form>
 
         {pairingCard}
+
+        {band.pairing.state === "paired" && <TextAlertsCard patientId={band.pairing.patientId} />}
 
         <DebugPanel agent={agent} busy={busy} />
       </div>

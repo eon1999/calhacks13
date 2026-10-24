@@ -11,6 +11,7 @@
 import type * as debug from "../debug.js";
 import type * as http from "../http.js";
 import type * as invites from "../invites.js";
+import type * as notify from "../notify.js";
 import type * as onboarding from "../onboarding.js";
 import type * as pairing from "../pairing.js";
 import type * as seed from "../seed.js";
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   debug: typeof debug;
   http: typeof http;
   invites: typeof invites;
+  notify: typeof notify;
   onboarding: typeof onboarding;
   pairing: typeof pairing;
   seed: typeof seed;

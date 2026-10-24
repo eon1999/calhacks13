@@ -40,7 +40,7 @@ export const activity = query({
 
 /**
  * Wipe today's test data for one patient: dose confirmations, check-ins,
- * alerts, safety events, and voice conversation history.
+ * alerts, texts, safety events, and voice conversation history.
  */
 export const resetToday = mutation({
   args: { patientId: v.id("patients"), now: v.number() },
@@ -69,17 +69,22 @@ export const resetToday = mutation({
         .withIndex("by_patient_status", (q) => q.eq("patientId", patientId))
         .collect()
     ).filter((a) => a.createdAt >= start);
+    const texts = await ctx.db
+      .query("textMessages")
+      .withIndex("by_patient_time", (q) => q.eq("patientId", patientId).gte("at", start))
+      .collect();
     const turns = (await ctx.db.query("voiceTurns").collect()).filter(
       (t) => t.patientId === patientId,
     );
 
-    const all = [...doseEvents, ...checkIns, ...events, ...alerts, ...turns];
+    const all = [...doseEvents, ...checkIns, ...events, ...alerts, ...texts, ...turns];
     await Promise.all(all.map((doc) => ctx.db.delete(doc._id)));
     return {
       doseEvents: doseEvents.length,
       checkIns: checkIns.length,
       events: events.length,
       alerts: alerts.length,
+      textMessages: texts.length,
       voiceTurns: turns.length,
     };
   },

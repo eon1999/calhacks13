@@ -48,6 +48,7 @@ export default defineSchema({
     relationship: v.optional(v.string()),
     isOwner: v.optional(v.boolean()),
     urgentAlerts: v.optional(v.boolean()),
+    phone: v.optional(v.string()), // E.164; alerts are texted here (convex/notify.ts)
     joinedAt: v.optional(v.number()),
   })
     .index("by_patient", ["patientId"])
@@ -58,7 +59,7 @@ export default defineSchema({
     token: v.string(),
     role: careRole,
     name: v.string(),
-    contact: v.optional(v.string()), // email or phone; not sent anywhere yet
+    contact: v.optional(v.string()), // email or phone; a phone becomes the member's alert number on accept
     invitedBy: v.string(), // userId
     createdAt: v.number(),
     expiresAt: v.number(),
@@ -173,6 +174,19 @@ export default defineSchema({
     acknowledgedBy: v.optional(v.string()),
     acknowledgedAt: v.optional(v.number()),
   }).index("by_patient_status", ["patientId", "status"]),
+
+  // Every text Cadence sent, tried, or deliberately held back for an alert.
+  textMessages: defineTable({
+    patientId: v.id("patients"),
+    alertId: v.optional(v.id("alerts")), // unset for "Send test"
+    memberId: v.optional(v.id("careTeamMembers")),
+    to: v.string(), // E.164
+    body: v.string(),
+    status: v.union(v.literal("sent"), v.literal("failed"), v.literal("skipped")),
+    reason: v.optional(v.string()), // why it failed or was skipped
+    providerId: v.optional(v.string()), // Twilio message SID
+    at: v.number(),
+  }).index("by_patient_time", ["patientId", "at"]),
 
   summaries: defineTable({
     patientId: v.id("patients"),

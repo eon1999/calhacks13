@@ -3,6 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { localDateKey, PHASES, PROCEDURES, recoveryStatus } from "@/lib/onboarding/recovery";
 import { RELATIONSHIPS } from "@/lib/onboarding/roles";
+import { toE164 } from "@/lib/notify/phone";
 import type { SetupDraft } from "../setup-state";
 import {
   ChoiceCard,
@@ -35,7 +36,8 @@ function submit(onNext: () => void) {
 }
 
 export function YouStep({ draft, updateDraft, onNext }: ProfileStepProps) {
-  const ready = draft.ownerName.trim().length > 0;
+  const phoneOk = !draft.ownerPhone.trim() || toE164(draft.ownerPhone) !== null;
+  const ready = draft.ownerName.trim().length > 0 && phoneOk;
   return (
     <form onSubmit={submit(onNext)}>
       <StepHeading
@@ -56,6 +58,22 @@ export function YouStep({ draft, updateDraft, onNext }: ProfileStepProps) {
             value={draft.ownerName}
             onChange={(e) => updateDraft({ ownerName: e.target.value })}
             placeholder="Sarah Lee"
+          />
+        </Field>
+
+        <Field
+          label="Your mobile (optional)"
+          htmlFor="ownerPhone"
+          hint={phoneOk ? "Cadence texts you here if something's wrong. US numbers, or start with + and the country code." : "That doesn't look like a phone number."}
+        >
+          <TextInput
+            id="ownerPhone"
+            type="tel"
+            autoComplete="tel"
+            inputMode="tel"
+            value={draft.ownerPhone}
+            onChange={(e) => updateDraft({ ownerPhone: e.target.value })}
+            placeholder="(415) 555-0123"
           />
         </Field>
 
