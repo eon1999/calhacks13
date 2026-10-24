@@ -24,6 +24,7 @@ import type * as profile from "../profile.js";
 import type * as reports from "../reports.js";
 import type * as safety from "../safety.js";
 import type * as seed from "../seed.js";
+import type * as settings from "../settings.js";
 import type * as voice from "../voice.js";
 import type * as watchList from "../watchList.js";
 
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   reports: typeof reports;
   safety: typeof safety;
   seed: typeof seed;
+  settings: typeof settings;
   voice: typeof voice;
   watchList: typeof watchList;
 }>;

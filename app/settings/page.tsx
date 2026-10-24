@@ -1,7 +1,16 @@
-export default function SettingsPage() {
+import type { Metadata } from "next";
+import { ConvexClientProvider } from "@/components/convex-client-provider";
+import { SettingsPage } from "@/components/settings/settings-page";
+
+export const metadata: Metadata = {
+  title: "Settings · Cadence",
+  description: "Medicines and schedule, care team and permissions, devices and tokens.",
+};
+
+export default function Page() {
   return (
-    <main className="p-8">
-      <h1 className="text-3xl font-bold">Settings</h1>
-    </main>
+    <ConvexClientProvider>
+      <SettingsPage />
+    </ConvexClientProvider>
   );
 }

@@ -1,7 +1,17 @@
-export default function DemoPage() {
+import type { Metadata } from "next";
+import { ConvexClientProvider } from "@/components/convex-client-provider";
+import { DemoPanel } from "@/components/demo/demo-panel";
+
+export const metadata: Metadata = {
+  title: "Demo controls · Cadence",
+  description: "Team-only panel that simulates every device event, so the demo works with the hardware unplugged.",
+};
+
+// Team only. TODO(auth): hide behind a team login before any real deployment.
+export default function Page() {
   return (
-    <main className="p-8">
-      <h1 className="text-3xl font-bold">Demo controls</h1>
-    </main>
+    <ConvexClientProvider>
+      <DemoPanel />
+    </ConvexClientProvider>
   );
 }
