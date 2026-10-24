@@ -5,6 +5,38 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Hub onboarding, 3D band, watch-list research agent and a phone agent skeleton
+
+**`/hub` demo hub** (`components/wearable/hub-demo.tsx`)
+- A spinnable 3D wristband (`band-model.tsx`, three.js via `@react-three/fiber` + `drei`, built in code, no model file) on the landing page's `Sky` backdrop. Drag rotates it. Zoom is off so it never captures page scroll, and vertical swipes still scroll on phones.
+- **Patient onboarding panel** (`patient-onboarding.tsx`): Conditions → Medications → Emergency contacts → Done. It edits the same patient the band simulator talks to, so a new medicine shows on the band's schedule straight away. `HubDemo` owns `useBandPairing` and `useVoiceAgent` and passes them to both the panel and `WearableSimulator` (now props, not internal hooks). Backend: `convex/profile.ts` (public, no auth, like `voice.ts`).
+- The medicine form is now a shared `MedicationEditor` in `components/onboarding/steps/meds-step.tsx`, used by `/start` and `/hub`. `convex/onboarding.ts` exports its validators and `insertMedication`.
+
+**Health background** (`lib/onboarding/health.ts`)
+- `/start` has a **Their health** step (`health-step.tsx`): conditions, allergies, mobility and notes, saved to `patients.health` via `onboarding.updateHealth`. `/hub` writes `health.conditions` too.
+- `patients.emergencyContacts` (name, relationship, phone; up to 5).
+- The voice prompt (`lib/voice/prompt.ts`) includes conditions, allergies, mobility guidance and emergency contacts. If the patient asks who to call, the band names them, and 911 always comes first.
+
+**Watch-list research agent** (`convex/agent.ts`, `convex/watchList.ts`, `lib/watch-list.ts`)
+- Clicking **Finish** in `/hub` onboarding runs `watchList.request`, which schedules `agent.researchWatchList`. Claude Opus 5.5 searches allowlisted medical sites (`web_search_20260209`, up to 8 searches) and returns a short watch list: heart rate, temperature and movement signals, each with a device-checkable threshold, an alert tier and a source URL. Signals whose source isn't on the allowlist are dropped and recorded as gaps.
+- The result is submitted through a `strict` tool (Opus 5.5 rejects forced `tool_choice`; structured outputs can't be combined with web-search citations). The agent resumes `pause_turn`, sends validation errors back for a resubmit, and caps the loop at 6 turns. Server-side `fallbacks: "default"` is on.
+- Stored in the `watchLists` table (one row per patient: researching / ready / failed). `watch-list-card.tsx` shows it live on the onboarding Done step, with **Re-run research**.
+- Needs `ANTHROPIC_API_KEY` set on Convex. A run takes 1–2 minutes.
+
+**Phone agent skeleton** (`lib/phone/*`, `POST /api/phone/call`)
+- Places an outbound call through a Cartesia voice agent (`POST /agents/calls`, `Cartesia-Version: 2026-03-01`), passing `patient_name`, `contact_name`, `reason_line` and `callback_number` as dynamic variables.
+- **All placeholders:** the welcome message, instructions and per-reason lines in `lib/phone/script.ts` are TODO text meant to be pasted into the agent in the Cartesia dashboard. It needs `CARTESIA_PHONE_AGENT_ID` and `CARTESIA_FROM_NUMBER_ID` (see `.env.example`). Without them the route returns 503 naming the missing variable.
+- The route places real calls, so it's gated like the debug routes (`debugEnabled()`).
+
+**Still open**
+- Nothing uses the watch list yet. Next steps: add it to the voice prompt, and have heart rate and temperature readings raise alerts when they cross its thresholds.
+- Nothing places phone calls automatically yet. Next step: call emergency contacts on fall or urgent alerts. Cartesia's docs disagree on the auth header (Bearer vs `X-API-Key`); Bearer is used, so check it on the first real call.
+- `convex/profile.ts`, `convex/watchList.ts` and `/api/phone/call` need auth. They don't use Clerk yet.
+
+**Verified:** `tsc`, `eslint` on the touched files, vitest (prompt health and emergency-contact tests, phone request/E.164/variable tests). The watch-list agent was run live once against the demo patient.
+
+---
+
 ## 2026-10-24: Text alerts land on main, with per-person notification preferences, daily summary texts and scheduled check-ins
 
 This merges `feat/voice-on-task` (Twilio text alerts, the on-task voice prompt) into main's dose engine, alerts, care dashboard and Clerk work. Where both sides had built the same thing, **main's pages won**: `/care`, `/clinician/[patientId]`, `/settings`, the seed and `raiseAlert`. My versions of `/care` and the clinician report were dropped before merging. The guiding rule for what was added: **configurable without overwhelm**.
