@@ -5,6 +5,16 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Fake band for building without hardware
+
+`npm run fake-band` stands in for the wristband. It posts to the real `/device/activity`, `/device/event` and `/device/heartbeat` routes with a device token from `/settings`, so auth, `deviceId` matching and schema errors all get exercised.
+- **Generator** (`lib/fake-band.ts`, tested in `lib/fake-band.test.ts`): `normal`, `resting` and `inactive` scenarios. Counts are per window, BPM rises with activity, about 1 window in 10 has no pulse, and falls peak at 2.5–4.5 g.
+- **CLI** (`scripts/fake-band.mts`): streams windows and heartbeats (`--speed` compresses time, `--fall-after` adds one fall), or sends a single `fall` / `sos` / `lid`. It reads `FAKE_BAND_ID`, `FAKE_BAND_TOKEN` and the site URL from `.env.local`.
+- `tsconfig.json` gains `allowImportingTsExtensions` so Node can run the script directly (Node 24 strips types).
+- README's Device API section now says counts are per window and the band needs no clock.
+
+---
+
 ## 2026-10-24: feat/voice-on-task merged with main
 
 Both sides kept. Where they overlapped:

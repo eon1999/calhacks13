@@ -91,7 +91,23 @@ Every request carries `Authorization: Bearer <device token>`; register a device 
 | `POST /device/event` | `{ deviceId, type: "lid_open" \| "sos" \| "fall", peakG? }` | `{ ok, match? }` |
 | `POST /device/heartbeat` | `{ deviceId, firmwareVersion? }` | `{ led: "due" \| "taken" \| "missed" \| "off", buzz }` |
 
+`steps` and `activeMinutes` count one window only (reports add windows up per day), so the band resets them after each post. Leave out `heartRate` when the sensor has no clean reading. The server timestamps everything, so the band needs no clock.
+
 The voice endpoints the band calls are documented in `CHANGELOG.md` ("HTTP contract").
+
+### Fake band (no hardware needed)
+
+`scripts/fake-band.mts` stands in for the wristband. It posts realistic windows, heartbeats and events to the routes above with a real device token. Register a device on **/settings**, then:
+
+```bash
+export FAKE_BAND_ID=<device id> FAKE_BAND_TOKEN=<token>
+npm run fake-band -- --speed 30                    # 5-min windows every 10 s, heartbeat every 30 s
+npm run fake-band -- --scenario inactive           # zero-movement windows (also: normal, resting)
+npm run fake-band -- --speed 30 --fall-after 1m    # stream, then fall once
+npm run fake-band -- fall                          # one event and exit (also: sos, lid)
+```
+
+The URL comes from `NEXT_PUBLIC_CONVEX_SITE_URL` in `.env.local` (`FAKE_BAND_URL` overrides it). The generator is in `lib/fake-band.ts`. Stop the script and the device goes offline like a real band would.
 
 ## Tests
 
