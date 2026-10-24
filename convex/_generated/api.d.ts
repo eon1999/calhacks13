@@ -17,6 +17,7 @@ import type * as demo from "../demo.js";
 import type * as devices from "../devices.js";
 import type * as doses from "../doses.js";
 import type * as http from "../http.js";
+import type * as identity from "../identity.js";
 import type * as invites from "../invites.js";
 import type * as onboarding from "../onboarding.js";
 import type * as pairing from "../pairing.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   devices: typeof devices;
   doses: typeof doses;
   http: typeof http;
+  identity: typeof identity;
   invites: typeof invites;
   onboarding: typeof onboarding;
   pairing: typeof pairing;

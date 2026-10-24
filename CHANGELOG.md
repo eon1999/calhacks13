@@ -5,6 +5,24 @@ Newest entries first. When you ship something, add an entry: what changed, where
 
 ---
 
+## 2026-10-24: Clerk sign-in (off until keys are set)
+
+Clerk app `app_3L8w9uL7WMgglgSoAK50VLOntIN` (chosen in the Clerk Dashboard). The Clerk CLI couldn't reach Clerk from the build sandbox, so this is the manual Next.js setup; no keys are committed.
+
+- `lib/clerk.ts`: `clerkEnabled` = `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is set. Everything below is inert without it, so nobody needs an account to run the app.
+- `proxy.ts` (Next 16's middleware): `clerkMiddleware()`; no routes are forced behind sign-in.
+- `app/layout.tsx`: `ClerkProvider` (shadcn theme from `@clerk/ui`) inside `<body>`, plus `ClerkIdentityBridge` (`components/auth/clerk-identity.tsx`).
+- `components/convex-client-provider.tsx`: `ConvexProviderWithClerk` when enabled, so Convex calls carry the Clerk token.
+- `components/onboarding/use-demo-identity.ts`: returns the Clerk user id when signed in; otherwise the old per-browser demo id.
+- `components/auth/auth-controls.tsx`: Sign in / Sign up (modal) or `UserButton`, in the AppShell, onboarding and /hub headers.
+- `convex/auth.config.ts`: Clerk provider when `CLERK_JWT_ISSUER_DOMAIN` is set on the deployment. `convex/identity.ts` `resolveUserId()`: a signed-in caller is `identity.subject` whatever `userId` they send; signed out falls back to the demo id unless `CADENCE_REQUIRE_AUTH=1`. Used by `membership`/`requireManager` (so onboarding, invites, pairing, devices and settings), `createPatient` and invites.
+- `reports.patients`: signed in, lists only your care-team patients plus the demo patient.
+- `tests/convex/identity.test.ts`: spoofing another user's id fails when signed in; demo mode still works.
+
+**Open:** dashboard/report/voice/demo functions still don't check membership or permissions; sign-in isn't verified against a live Clerk app from here (no network to Clerk). Roles per view (patient / care partner / clinician) can now hang off `careTeamMembers.role` for the signed-in user.
+
+---
+
 ## 2026-10-24: Dose engine, alerts, care dashboard, clinician report, settings and /demo
 
 Closes the software side of Layer 1 and most of Layer 2 from the design doc (no firmware). Everything works without API keys; Claude-written text falls back to labelled templates.

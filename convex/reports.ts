@@ -97,11 +97,21 @@ export function patientSummary(patient: Doc<"patients">, now: number) {
   };
 }
 
-/** Patients the demo can show. TODO(auth): only the caller's care-team patients. */
+/** Patients this browser can pick. Signed out (demo mode), every patient. */
 export const patients = query({
   args: {},
   handler: async (ctx) => {
-    const all = await ctx.db.query("patients").collect();
+    let all = await ctx.db.query("patients").collect();
+    // Signed in: your own care-team patients, plus the simulated demo patient.
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity) {
+      const mine = await ctx.db
+        .query("careTeamMembers")
+        .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+        .collect();
+      const ids = new Set<string>(mine.map((m) => m.patientId));
+      all = all.filter((p) => ids.has(p._id) || p.isDemo);
+    }
     const now = Date.now();
     return all.map((p) => patientSummary(p, now)).sort((a, b) => Number(b.isDemo) - Number(a.isDemo));
   },

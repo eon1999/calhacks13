@@ -1,7 +1,10 @@
 "use client";
 
+import { useAuth } from "@clerk/nextjs";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useEffect, useState, type ReactNode } from "react";
+import { clerkEnabled } from "@/lib/clerk";
 
 let shared: ConvexReactClient | null = null;
 
@@ -10,6 +13,7 @@ let shared: ConvexReactClient | null = null;
  * routes that need it so the landing page doesn't open a websocket.
  * The client is created after mount: its constructor uses Math.random(), which
  * Next.js refuses during prerender.
+ * With Clerk configured, requests carry the signed-in user's token.
  */
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   const url = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -30,5 +34,12 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
     );
   }
   if (!client) return null;
+  if (clerkEnabled) {
+    return (
+      <ConvexProviderWithClerk client={client} useAuth={useAuth}>
+        {children}
+      </ConvexProviderWithClerk>
+    );
+  }
   return <ConvexProvider client={client}>{children}</ConvexProvider>;
 }

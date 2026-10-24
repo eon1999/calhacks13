@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { AuthControls } from "@/components/auth/auth-controls";
 import { Wordmark } from "@/components/landing/wordmark";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { PatientSummary } from "./use-patient";
@@ -74,6 +75,7 @@ export function AppShell({
                 </select>
               </label>
             )}
+            <AuthControls />
           </div>
         </div>
       </header>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { AuthControls } from "@/components/auth/auth-controls";
 import { Wordmark } from "@/components/landing/wordmark";
 
 // Form primitives for onboarding, in the landing page's lilac/plum language:
@@ -21,7 +22,10 @@ export function OnboardingShell({ aside, children }: { aside?: ReactNode; childr
         <Link href="/" aria-label="Cadence home" className="text-3xl">
           <Wordmark />
         </Link>
-        <span className="mono-label text-plum-muted">Setup</span>
+        <div className="flex items-center gap-3">
+          <span className="mono-label text-plum-muted">Setup</span>
+          <AuthControls />
+        </div>
       </header>
 
       <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-24 md:grid-cols-[220px_1fr] md:px-10 md:pt-6">

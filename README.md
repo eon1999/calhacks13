@@ -25,6 +25,16 @@ The Next.js voice routes read `ANTHROPIC_API_KEY` and `CARTESIA_API_KEY` from `.
 
 **Without keys nothing blocks:** summaries and reports fall back to fixed templates (labelled "template"), and the dose engine, alerts, fall/SOS flow, dashboards and /demo all work. Only spoken audio on /hub needs Cartesia + Claude.
 
+## Sign-in (Clerk, optional)
+
+Clerk switches on when `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is set; without it everything runs on per-browser demo identities. To turn it on:
+
+1. Clerk Dashboard → **API keys**: copy the publishable and secret keys into `.env.local` (and Vercel) as `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`.
+2. Clerk Dashboard → **Integrations → Convex** (or a JWT template named `convex`), then `npx convex env set CLERK_JWT_ISSUER_DOMAIN <Frontend API URL>`.
+3. Restart `npx convex dev` and `npm run dev`. Sign in / Sign up appear in the page headers.
+
+Signed in, Convex identifies you by your Clerk user id (`convex/identity.ts`), so you can't act as anyone else, and the patient picker shows only your care-team patients plus the demo patient. Signed-out demo use keeps working unless you set `npx convex env set CADENCE_REQUIRE_AUTH 1`.
+
 ## Pages
 
 | Route | Who | What it is |
@@ -92,7 +102,7 @@ npm run lint
 
 ## Known limitations
 
-- **No real auth yet.** Pages pick a patient per browser; Convex functions are public (marked `TODO(auth)`). Clerk was chosen but has no keys.
+- **Auth is opt-in.** Clerk is wired in but off until keys are set, and signed-out demo identities still work unless `CADENCE_REQUIRE_AUTH=1`. Dashboard, report, voice and /demo functions don't yet check care-team membership or permissions (marked `TODO(auth)`).
 - **No firmware yet.** `/demo` and the `/hub` simulator stand in for the band and pillbox; the device routes are ready for it.
 - Alerts reach the care partner on `/care` (with a browser notification when the tab is open). No SMS or push yet.
 - Moss isn't wired up (no key); the agent's memory of earlier check-ins comes from Convex.
